@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Generator Gen2 - Avery 5520</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .input-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .input-instructions {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        .button-group {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button.secondary {
+            background: #6c757d;
+        }
+        
+        button.secondary:hover {
+            background: #545b62;
+        }
+        
+        button.success {
+            background: #28a745;
+        }
+        
+        button.success:hover {
+            background: #218838;
+        }
+        
+        button.info {
+            background: #17a2b8;
+        }
+        
+        button.info:hover {
+            background: #138496;
+        }
+        
+        /* Documentation Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+        
+        .modal.show {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 20px;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .modal-header-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .print-doc-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .print-doc-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close:hover {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+        
+        .modal-body {
+            padding: 30px;
+            overflow-y: auto;
+            max-height: calc(90vh - 80px);
+        }
+        
+        .doc-section {
+            margin-bottom: 30px;
+        }
+        
+        .doc-section h3 {
+            color: #007bff;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .doc-section h4 {
+            color: #495057;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .requirement-box {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .requirement-box strong {
+            color: #007bff;
+        }
+        
+        .step-list {
+            counter-reset: step-counter;
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .step-list li {
+            counter-increment: step-counter;
+            margin-bottom: 15px;
+            padding-left: 35px;
+            position: relative;
+        }
+        
+        .step-list li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #007bff;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #d63384;
+        }
+        
+        .stats {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .barcode-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(250px, 350px));
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        
+        .barcode-item {
+            background: white;
+            padding: 12px 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+            page-break-inside: avoid;
+            border: 1px solid #e0e0e0;
+            max-width: 350px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .device-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #000;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+            transform: scaleX(1.1);
+        }
+        
+        .serial-number {
+            font-size: 14px;
+            color: #000;
+            margin: 6px 0;
+            font-weight: bold;
+            padding: 4px 0;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+            width: 100%;
+        }
+        
+        .barcode-item svg {
+            max-width: 100%;
+            height: auto;
+            margin: 4px 0;
+        }
+        
+        .asset-number {
+            font-size: 11px;
+            color: #000;
+            margin-top: 3px;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+        
+        .example-table {
+            margin-top: 10px;
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 13px;
+        }
+        
+        .example-table th, .example-table td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .example-table th {
+            background: #f2f2f2;
+            font-weight: bold;
+        }
+        
+        .example-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        @media print {
+            @page {
+                size: letter;
+                margin: 0.6in 0.25in 0.5in 0.25in;
+            }
+            
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .header, .input-section, .button-group {
+                display: none;
+            }
+            
+            .barcode-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 2.625in);
+                grid-template-rows: repeat(10, 1in);
+                gap: 0;
+                margin: 0;
+                padding: 0;
+                justify-content: space-between;
+                width: 8.2in;
+            }
+            
+            .barcode-item {
+                width: 2.625in;
+                height: 1in;
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+                padding: 8px 5px;
+                margin: 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                page-break-inside: avoid;
+            }
+            
+            /* Shift rows 1-3 up by 5px (ONLY first page - items 1-9) */
+            .barcode-item:nth-child(-n+9) {
+                margin-top: -5px;
+            }
+            
+            /* Add 6px extra spacing for rows 4-10 on first page (items 10-30) */
+            .barcode-item:nth-child(n+10):nth-child(-n+30) {
+                margin-top: 6px;
+            }
+            
+            /* Force page break after every 30 items */
+            .barcode-item:nth-child(30n) {
+                page-break-after: always;
+            }
+            
+            .device-name {
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 3px;
+                line-height: 1.1;
+                width: 100%;
+                text-align: center;
+                letter-spacing: 0.5px;
+                transform: scaleX(1.15);
+            }
+            
+            .serial-number {
+                font-size: 11px;
+                font-weight: bold;
+                border-top: 1.5px solid #000;
+                border-bottom: 1.5px solid #000;
+                padding: 2px 0;
+                margin: 3px 0;
+                line-height: 1.1;
+                width: 100%;
+                text-align: center;
+            }
+            
+            .barcode-item svg {
+                height: 30px !important;
+                width: auto !important;
+                max-width: 95%;
+                margin: 2px 0;
+            }
+            
+            .asset-number {
+                font-size: 8px;
+                font-weight: 600;
+                margin-top: 2px;
+                letter-spacing: 1.5px;
+                line-height: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Barcode Generator Gen2</h1>
+        <p style="color: #666;">Generate Code-39 barcodes from Excel data</p>
+        <p style="color: #28a745; font-size: 14px; margin-top: 5px;">📄 Optimized for Avery 5520 Labels (1" × 2⅝")</p>
+        <button class="info" onclick="showDocumentation()" style="margin-top: 10px;">📖 Documentation & Help</button>
+    </div>
+    
+    <div class="input-section">
+        <div class="input-instructions">
+            <strong>📋 Instructions:</strong><br>
+            Copy your data from Excel with 3 columns in this order:<br>
+            <strong>Device Name | Serial Number | Asset Tag</strong><br>
+            Then paste it in the box below.
+            
+            <table class="example-table">
+                <thead>
+                    <tr>
+                        <th>Device Name</th>
+                        <th>Serial Number</th>
+                        <th>Asset Tag</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Meta Quest 3 - B1001</td>
+                        <td>2G0YC5ZG3K01JD</td>
+                        <td>16975500</td>
+                    </tr>
+                    <tr>
+                        <td>Meta Quest 3 - B1002</td>
+                        <td>2G0YC5ZG3K02JE</td>
+                        <td>16975501</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <textarea id="dataInput" placeholder="Paste your Excel data here..."></textarea>
+        
+        <div class="button-group">
+            <button onclick="generateBarcodes()">📊 Generate Barcodes</button>
+            <button class="secondary" onclick="clearAll()">🗑️ Clear All</button>
+            <button class="success" onclick="printBarcodes()" id="printBtn" style="display:none;">🖨️ Print on Avery 5520</button>
+        </div>
+        
+        <div class="stats" id="stats"></div>
+        
+        <div id="multiPageWarning" style="display:none; background:#fff3cd; border:1px solid #ffc107; padding:10px; margin-top:10px; border-radius:4px;">
+            <strong>⚠️ Multi-Page Printing:</strong> You have more than 30 labels. Page 1 will print correctly. For pages 2+, you may need to adjust your printer settings or print pages separately for best results.
+        </div>
+    </div>
+    
+    <div class="barcode-grid" id="barcodeGrid"></div>
+    
+    <!-- Documentation Modal -->
+    <div id="docModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📖 Barcode Generator Gen2 - Documentation</h2>
+                <div class="modal-header-buttons">
+                    <button class="print-doc-btn" onclick="printDocumentation()">🖨️ Print</button>
+                    <button class="close" onclick="closeDocumentation()">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body" id="docContent">
+                <!-- Print-only instructions -->
+                <div class="print-only-section">
+                    <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #007bff;">
+                        <h1 style="color: #007bff; margin: 0;">Barcode Generator Gen2</h1>
+                        <p style="margin: 10px 0 0 0; color: #666;">User Documentation & Quick Start Guide</p>
+                        <p style="margin: 5px 0 0 0; color: #999; font-size: 12px;" id="printDate"></p>
+                    </div>
+                    
+                    <h3>🎯 Requirements</h3>
+                    
+                    <div class="requirement-box">
+                        <strong>Label Sheets:</strong> Avery 5520 Waterproof Address Labels<br>
+                        <strong>Dimensions:</strong> 1" × 2⅝" (30 labels per sheet)<br>
+                        <strong>Layout:</strong> 3 columns × 10 rows<br>
+                        <strong>Compatibility:</strong> Also works with Avery 5160, 8160, 8460, 8660, and compatible brands
+                    </div>
+                    
+                    <div class="requirement-box">
+                        <strong>Browser:</strong> Google Chrome or Microsoft Edge (recommended)<br>
+                        <strong>Data Format:</strong> Excel/spreadsheet with 3 columns<br>
+                        <strong>Barcode Type:</strong> Code-39 (standard for asset tracking)
+                    </div>
+                    
+                    <h3>🚀 Getting Started - Running the Barcode Generator</h3>
+                    
+                    <div class="requirement-box">
+                        <strong>To run this barcode generator tool:</strong>
+                        <ol class="step-list">
+                            <li>Locate the <code>Barcode-Generator-Gen2.html</code> file on your computer</li>
+                            <li>Right-click on the file and select "Open with"</li>
+                            <li>Choose Google Chrome or Microsoft Edge (recommended)</li>
+                            <li>The tool will open in your browser - bookmark it for easy access</li>
+                        </ol>
+                        
+                        <strong>Alternative methods:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>Double-click <code>Barcode-Generator-Gen2.html</code> if your default browser is Chrome/Edge</li>
+                            <li>Drag and drop the file into an open Chrome/Edge window</li>
+                            <li>Press Ctrl+O in Chrome/Edge and browse to <code>Barcode-Generator-Gen2.html</code></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="success-box">
+                        <strong>Quick Access Tip:</strong> Create a desktop shortcut to <code>Barcode-Generator-Gen2.html</code> for one-click access
+                    </div>
+                </div>
+                
+                <div class="doc-section screen-only">
+                    <h3>🎯 Requirements</h3>
+                    
+                    <div class="requirement-box">
+                        <strong>Label Sheets:</strong> Avery 5520 Waterproof Address Labels<br>
+                        <strong>Dimensions:</strong> 1" × 2⅝" (30 labels per sheet)<br>
+                        <strong>Layout:</strong> 3 columns × 10 rows<br>
+                        <strong>Compatibility:</strong> Also works with Avery 5160, 8160, 8460, 8660, and compatible brands
+                    </div>
+                    
+                    <div class="requirement-box">
+                        <strong>Browser:</strong> Google Chrome or Microsoft Edge (recommended)<br>
+                        <strong>Data Format:</strong> Excel/spreadsheet with 3 columns<br>
+                        <strong>Barcode Type:</strong> Code-39 (standard for asset tracking)
+                    </div>
+                </div>
+                
+                <div class="doc-section">
+                    <h3>📊 How to Use</h3>
+                    
+                    <h4>Preparing Your Data:</h4>
+                    <ol class="step-list">
+                        <li>Open your Excel spreadsheet with asset data</li>
+                        <li>Arrange your data in 3 columns:
+                            <br><code>Column A: Device Name</code>
+                            <br><code>Column B: Serial Number</code>
+                            <br><code>Column C: Asset Tag</code>
+                        </li>
+                        <li>Select all the data (including all 3 columns)</li>
+                        <li>Copy the selection (Ctrl+C or Cmd+C)</li>
+                    </ol>
+                    
+                    <h4>Generating Barcodes:</h4>
+                    <ol class="step-list">
+                        <li>Paste your data into the text box on this page</li>
+                        <li>Click "Generate Barcodes"</li>
+                        <li>Review the preview to ensure correct formatting</li>
+                        <li>Click "Print on Avery 5520" when ready</li>
+                    </ol>
+                </div>
+                
+                <div class="doc-section">
+                    <h3>🖨️ Print Settings</h3>
+                    
+                    <div class="warning-box">
+                        <strong>⚠️ Important:</strong> Use these exact settings for proper alignment
+                    </div>
+                    
+                    <h4>Required Print Settings:</h4>
+                    <ol class="step-list">
+                        <li><strong>Scale:</strong> Set to 100% (no scaling/shrinking)</li>
+                        <li><strong>Margins:</strong> Choose "Default" or "None"</li>
+                        <li><strong>Headers/Footers:</strong> Turn OFF (uncheck this option)</li>
+                        <li><strong>Paper Size:</strong> Letter (8.5" × 11")</li>
+                        <li><strong>Orientation:</strong> Portrait</li>
+                        <li><strong>Color:</strong> Black & White is fine for barcodes</li>
+                    </ol>
+                    
+                    <h4>Printer Feed Direction:</h4>
+                    <p>Feed the Avery 5520 sheets according to your printer's specifications. Most printers work best with labels face-down, top edge first.</p>
+                </div>
+                
+                <div class="doc-section">
+                    <h3>🔧 Troubleshooting</h3>
+                    
+                    <h4>Labels Not Aligning:</h4>
+                    <ul>
+                        <li>Verify scale is set to exactly 100%</li>
+                        <li>Check that margins are set to "Default" or "None"</li>
+                        <li>Ensure headers/footers are disabled</li>
+                        <li>Try printing a test page on regular paper first</li>
+                    </ul>
+                    
+                    <h4>Barcodes Not Scanning:</h4>
+                    <ul>
+                        <li>Ensure asset tags contain only numbers and letters</li>
+                        <li>Check printer quality settings (use "Normal" or "Best")</li>
+                        <li>Verify the scanner supports Code-39 format</li>
+                        <li>Clean the printer heads if bars appear faded</li>
+                    </ul>
+                    
+                    <h4>Multi-Page Printing:</h4>
+                    <div class="warning-box">
+                        <strong>Note:</strong> When printing more than 30 labels, page 1 is optimized for perfect alignment. Pages 2+ use standard spacing. For best results with multiple pages, consider printing in batches of 30.
+                    </div>
+                </div>
+                
+                <div class="doc-section">
+                    <h3>💡 Tips & Best Practices</h3>
+                    
+                    <div class="success-box">
+                        <strong>Pro Tips:</strong>
+                        <ul style="margin: 10px 0 0 0;">
+                            <li>Always print a test page on regular paper first</li>
+                            <li>Keep serial numbers consistent in format</li>
+                            <li>Use sequential asset tags for easier tracking</li>
+                            <li>Save your Excel data for reprinting if needed</li>
+                            <li>Consider laminating labels for extra durability</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>Data Format Examples:</h4>
+                    <table class="example-table" style="width: 100%; margin-top: 10px;">
+                        <thead>
+                            <tr>
+                                <th>Device Name</th>
+                                <th>Serial Number</th>
+                                <th>Asset Tag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Meta Quest 3 - B1001</td>
+                                <td>2G0YC5ZG3K01JD</td>
+                                <td>18073528</td>
+                            </tr>
+                            <tr>
+                                <td>iPad Pro - Lab 2</td>
+                                <td>DMPX2LL/A001</td>
+                                <td>18073529</td>
+                            </tr>
+                            <tr>
+                                <td>Dell Laptop - IT-005</td>
+                                <td>SVC-TAG-9K3M2N</td>
+                                <td>18073530</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="doc-section">
+                    <h3>📝 Technical Specifications</h3>
+                    
+                    <h4>Barcode Details:</h4>
+                    <ul>
+                        <li><strong>Symbology:</strong> Code-39 (3 of 9)</li>
+                        <li><strong>Character Set:</strong> A-Z, 0-9, and special characters (- . $ / + % space)</li>
+                        <li><strong>Check Digit:</strong> Optional (not implemented)</li>
+                        <li><strong>Density:</strong> Optimized for standard barcode scanners</li>
+                    </ul>
+                    
+                    <h4>System Compatibility:</h4>
+                    <ul>
+                        <li><strong>Operating Systems:</strong> Windows 10/11, macOS, Linux</li>
+                        <li><strong>Browsers:</strong> Chrome 90+, Edge 90+, Firefox 88+, Safari 14+</li>
+                        <li><strong>Printers:</strong> Any printer supporting Letter size paper</li>
+                        <li><strong>Scanners:</strong> Any Code-39 compatible barcode scanner</li>
+                    </ul>
+                </div>
+                
+                <div class="doc-section" style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                    <p style="margin: 0; color: #6c757d;">Version 2.0 | Optimized for Avery 5520 Labels</p>
+                    <div class="print-only-section">
+                        <p style="margin: 10px 0 0 0; color: #6c757d; font-size: 12px;">
+                            📁 File Name: <code>Barcode-Generator-Gen2.html</code> - Run in Chrome or Edge<br>
+                            💡 Tip: Keep this printed guide with your Avery 5520 label sheets for reference
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showDocumentation() {
+            document.getElementById('docModal').classList.add('show');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+        
+        function closeDocumentation() {
+            document.getElementById('docModal').classList.remove('show');
+            document.body.style.overflow = 'auto'; // Restore scrolling
+        }
+        
+        function printDocumentation() {
+            // Create a new window for printing
+            const printWindow = window.open('', '_blank');
+            
+            // Get the documentation content
+            const docContent = document.getElementById('docContent').innerHTML;
+            
+            // Build the complete HTML document for printing
+            const printHTML = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Barcode Generator Gen2 - Documentation</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            line-height: 1.4;
+                            color: #333;
+                            max-width: 8.5in;
+                            margin: 0 auto;
+                            padding: 0.25in;
+                            font-size: 11pt;
+                        }
+                        
+                        h1 {
+                            color: #007bff;
+                            border-bottom: 2px solid #007bff;
+                            padding-bottom: 8px;
+                            margin-bottom: 15px;
+                            font-size: 20pt;
+                        }
+                        
+                        h3 {
+                            color: #007bff;
+                            border-bottom: 1px solid #e9ecef;
+                            padding-bottom: 5px;
+                            margin: 15px 0 10px 0;
+                            font-size: 14pt;
+                            page-break-after: avoid;
+                        }
+                        
+                        h4 {
+                            color: #495057;
+                            margin: 12px 0 8px 0;
+                            font-size: 11pt;
+                            font-weight: 600;
+                            page-break-after: avoid;
+                        }
+                        
+                        p {
+                            margin: 8px 0;
+                        }
+                        
+                        ul, ol {
+                            margin: 8px 0;
+                            padding-left: 25px;
+                        }
+                        
+                        li {
+                            margin: 4px 0;
+                        }
+                        
+                        .requirement-box {
+                            background: #f8f9fa;
+                            border-left: 3px solid #007bff;
+                            padding: 10px;
+                            margin: 10px 0;
+                            page-break-inside: avoid;
+                            font-size: 10pt;
+                        }
+                        
+                        .warning-box {
+                            background: #fff3cd;
+                            border-left: 3px solid #ffc107;
+                            padding: 10px;
+                            margin: 10px 0;
+                            page-break-inside: avoid;
+                            font-size: 10pt;
+                        }
+                        
+                        .success-box {
+                            background: #d4edda;
+                            border-left: 3px solid #28a745;
+                            padding: 10px;
+                            margin: 10px 0;
+                            page-break-inside: avoid;
+                            font-size: 10pt;
+                        }
+                        
+                        .step-list {
+                            counter-reset: step-counter;
+                            list-style: none;
+                            padding-left: 0;
+                        }
+                        
+                        .step-list li {
+                            counter-increment: step-counter;
+                            margin-bottom: 10px;
+                            padding-left: 30px;
+                            position: relative;
+                            page-break-inside: avoid;
+                            font-size: 10pt;
+                        }
+                        
+                        .step-list li::before {
+                            content: counter(step-counter);
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                            background: #007bff;
+                            color: white;
+                            width: 20px;
+                            height: 20px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-weight: bold;
+                            font-size: 11px;
+                        }
+                        
+                        code {
+                            background: #f4f4f4;
+                            padding: 1px 4px;
+                            border-radius: 2px;
+                            font-family: monospace;
+                            color: #d63384;
+                            font-size: 9pt;
+                        }
+                        
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin: 10px 0;
+                            page-break-inside: avoid;
+                            font-size: 10pt;
+                        }
+                        
+                        th, td {
+                            border: 1px solid #dee2e6;
+                            padding: 5px;
+                            text-align: left;
+                        }
+                        
+                        th {
+                            background: #f2f2f2;
+                            font-weight: bold;
+                        }
+                        
+                        .doc-section {
+                            margin-bottom: 20px;
+                            page-break-inside: auto;
+                        }
+                        
+                        .print-only-section {
+                            display: block !important;
+                        }
+                        
+                        /* Hide screen-only content when printing */
+                        .screen-only {
+                            display: none !important;
+                        }
+                        
+                        /* First page with Requirements and Getting Started */
+                        .print-only-section:first-child {
+                            page-break-after: auto;
+                        }
+                        
+                        /* Force page break only before Print Settings section */
+                        .doc-section:nth-child(5) {
+                            page-break-before: always;
+                        }
+                        
+                        @media print {
+                            body {
+                                margin: 0;
+                                padding: 0;
+                            }
+                        }
+                        
+                        @page {
+                            margin: 0.5in;
+                            size: letter;
+                        }
+                        
+                        /* Compact the footer */
+                        .doc-section:last-child {
+                            background: #f8f9fa;
+                            padding: 10px;
+                            border-radius: 4px;
+                            margin-top: 20px;
+                            text-align: center;
+                        }
+                        
+                        .doc-section:last-child p {
+                            margin: 3px 0;
+                            font-size: 9pt;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>Barcode Generator Gen2 - Documentation</h1>
+                    <p style="text-align: center; color: #666; margin-bottom: 15px; font-size: 10pt;">
+                        Printed: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                    ${docContent}
+                </body>
+                </html>
+            `;
+            
+            // Write the content to the new window
+            printWindow.document.open();
+            printWindow.document.write(printHTML);
+            printWindow.document.close();
+            
+            // Wait for content to load, then print
+            printWindow.onload = function() {
+                setTimeout(() => {
+                    printWindow.print();
+                    // Close the window after printing (optional)
+                    printWindow.onafterprint = function() {
+                        printWindow.close();
+                    };
+                }, 250);
+            };
+        }
+        
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('docModal');
+            if (event.target == modal) {
+                closeDocumentation();
+            }
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeDocumentation();
+            }
+        });
+        
+        function parseExcelData(text) {
+            const lines = text.trim().split('\n');
+            const data = [];
+            
+            for (let line of lines) {
+                // Split by tab (Excel default) or multiple spaces
+                let parts = line.split('\t');
+                if (parts.length < 3) {
+                    // Try splitting by multiple spaces if tabs don't work
+                    parts = line.split(/\s{2,}/);
+                }
+                
+                if (parts.length >= 3) {
+                    data.push({
+                        deviceName: parts[0].trim(),
+                        serialNumber: parts[1].trim(),
+                        assetTag: parts[2].trim()
+                    });
+                }
+            }
+            
+            return data;
+        }
+        
+        function generateBarcodes() {
+            const input = document.getElementById('dataInput').value;
+            if (!input.trim()) {
+                alert('Please paste your data first!');
+                return;
+            }
+            
+            const data = parseExcelData(input);
+            if (data.length === 0) {
+                alert('No valid data found. Please ensure your data has 3 columns separated by tabs.');
+                return;
+            }
+            
+            const grid = document.getElementById('barcodeGrid');
+            grid.innerHTML = ''; // Clear existing barcodes
+            
+            data.forEach((item, index) => {
+                const barcodeItem = document.createElement('div');
+                barcodeItem.className = 'barcode-item';
+                
+                // Device name
+                const deviceName = document.createElement('div');
+                deviceName.className = 'device-name';
+                deviceName.textContent = item.deviceName;
+                
+                // Serial number
+                const serialNumber = document.createElement('div');
+                serialNumber.className = 'serial-number';
+                serialNumber.textContent = `S/N: ${item.serialNumber}`;
+                
+                // Barcode SVG
+                const barcodeId = `barcode-${index}`;
+                const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                svg.id = barcodeId;
+                
+                // Asset number below barcode
+                const assetNumber = document.createElement('div');
+                assetNumber.className = 'asset-number';
+                assetNumber.textContent = item.assetTag;
+                
+                // Assemble the item
+                barcodeItem.appendChild(deviceName);
+                barcodeItem.appendChild(serialNumber);
+                barcodeItem.appendChild(svg);
+                barcodeItem.appendChild(assetNumber);
+                grid.appendChild(barcodeItem);
+                
+                // Generate the barcode
+                JsBarcode(`#${barcodeId}`, item.assetTag, {
+                    format: "CODE39",
+                    width: 2,
+                    height: 35,
+                    displayValue: false, // We're showing it separately below
+                    margin: 2,
+                    background: "#ffffff",
+                    lineColor: "#000000"
+                });
+            });
+            
+            // Update stats and show print button
+            document.getElementById('stats').innerHTML = `✅ Generated ${data.length} barcode(s)`;
+            document.getElementById('printBtn').style.display = 'inline-block';
+            
+            // Show warning for multi-page printing
+            if (data.length > 30) {
+                document.getElementById('multiPageWarning').style.display = 'block';
+            } else {
+                document.getElementById('multiPageWarning').style.display = 'none';
+            }
+        }
+        
+        function printBarcodes() {
+            const barcodeCount = document.querySelectorAll('.barcode-item').length;
+            let message = 'Barcode Generator Gen2 - Print Settings\n\nPrinting Tips for Avery 5520 Labels:\n\n1. Use Chrome or Edge for best results\n2. Set margins to "Default" or "None"\n3. Disable "Headers and Footers"\n4. Set Scale to "100%" (no scaling)\n5. Feed labels correctly into printer\n\n';
+            
+            if (barcodeCount > 30) {
+                message += '⚠️ MULTI-PAGE ALERT: You have ' + Math.ceil(barcodeCount / 30) + ' pages of labels.\nPage 1 is optimized. For best results on pages 2+, consider printing pages separately.\n\n';
+            }
+            
+            message += 'Click OK to open print dialog...';
+            alert(message);
+            window.print();
+        }
+        
+        function clearAll() {
+            document.getElementById('dataInput').value = '';
+            document.getElementById('barcodeGrid').innerHTML = '';
+            document.getElementById('stats').innerHTML = '';
+            document.getElementById('printBtn').style.display = 'none';
+            document.getElementById('multiPageWarning').style.display = 'none';
+        }
+        
+        // Allow pasting with Ctrl+V or Cmd+V
+        document.getElementById('dataInput').addEventListener('paste', function(e) {
+            setTimeout(() => {
+                const pastedText = this.value;
+                if (pastedText.includes('\t') || pastedText.includes('\n')) {
+                    // Auto-generate if it looks like table data
+                    document.getElementById('stats').innerHTML = '📋 Table data detected - Click "Generate Barcodes" to proceed';
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>
