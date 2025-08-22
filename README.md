@@ -3,7 +3,7 @@
 Asset Tag Barcode Generator for Avery 5520 sheets. Features bulk Code-39 barcode generation from Excel data, optimized print layouts for 30 labels/sheet, and comprehensive documentation. Perfect for asset tracking and inventory management.
 Generate Code-39 barcodes from Excel data
 
-Go to: https://zbghost325.github.io/barcode-generator-gen2/ to use!
+Go to: https://zbghost325.github.io/Barcode-Generator to use!
 _______________________________________________
 
 ## 🎯 Requirements
