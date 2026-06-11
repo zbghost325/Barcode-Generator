@@ -753,6 +753,9 @@
             <button class="format-option" onclick="setFormat('striptext')" id="fmtStripText">
                 &#x1F4CF; Strip - Text
             </button>
+            <button class="format-option" onclick="setFormat('stripmix')" id="fmtStripMix">
+                &#x1F4CF; Strip - Mixed
+            </button>
         </div>
         <div class="format-preview" id="formatPreview">
             <strong>Standard Barcode:</strong> Full-size label with device name, serial number, Code-39 barcode, and asset tag. One device per Avery 5520 label.
@@ -1004,14 +1007,17 @@
             document.getElementById('fmtStandard').classList.toggle('active', format === 'standard');
             document.getElementById('fmtStrip').classList.toggle('active', format === 'strip');
             document.getElementById('fmtStripText').classList.toggle('active', format === 'striptext');
+            document.getElementById('fmtStripMix').classList.toggle('active', format === 'stripmix');
 
             var preview = document.getElementById('formatPreview');
             if (format === 'standard') {
                 preview.innerHTML = '<strong>Standard Barcode:</strong> Full-size label with device name, serial number, Code-39 barcode, and asset tag. One device per Avery 5520 label.';
             } else if (format === 'strip') {
                 preview.innerHTML = '<strong>Strip - QR:</strong> Two thin strips per label with SN and AT as QR codes plus device name. Cut along the dashed line. Best when you have a QR scanner.';
-            } else {
+            } else if (format === 'striptext') {
                 preview.innerHTML = '<strong>Strip - Text:</strong> Two thin strips per label with SN and AT as plain text plus device name. Cut along the dashed line. Best when QR codes print blurry or no scanner available.';
+            } else {
+                preview.innerHTML = '<strong>Strip - Mixed:</strong> Two thin strips per label with SN as text, AT as QR code, plus device name. Cut along the dashed line. Best of both — scannable asset tag with readable serial number.';
             }
 
             clearAll();
@@ -1240,6 +1246,45 @@
             return strip;
         }
 
+        function createMixedStripItem(item) {
+            var strip = document.createElement('div');
+            strip.className = 'strip-item';
+
+            var snGroup = document.createElement('div');
+            snGroup.className = 'strip-text-group';
+            var snLabel = document.createElement('span');
+            snLabel.className = 'strip-text-label';
+            snLabel.textContent = 'SN';
+            var snValue = document.createElement('span');
+            snValue.className = 'strip-text-value';
+            snValue.textContent = item.serialNumber;
+            snGroup.appendChild(snLabel);
+            snGroup.appendChild(snValue);
+
+            var atGroup = document.createElement('div');
+            atGroup.className = 'strip-qr-group';
+            var atLabel = document.createElement('span');
+            atLabel.className = 'strip-qr-label';
+            atLabel.textContent = 'AT';
+            var atQR = generateQRCanvas(item.assetTag, 36);
+            atGroup.appendChild(atLabel);
+            atGroup.appendChild(atQR);
+
+            var divider = document.createElement('div');
+            divider.className = 'strip-divider';
+
+            var name = document.createElement('div');
+            name.className = 'strip-device-name';
+            name.textContent = item.deviceName;
+
+            strip.appendChild(snGroup);
+            strip.appendChild(atGroup);
+            strip.appendChild(divider);
+            strip.appendChild(name);
+
+            return strip;
+        }
+
         function generateStripLabels(data, itemCreator) {
             var creator = itemCreator || createStripItem;
             var grid = document.getElementById('stripGrid');
@@ -1286,12 +1331,14 @@
                 labelCount = generateStandardBarcodes(data);
             } else if (currentFormat === 'strip') {
                 labelCount = generateStripLabels(data, createStripItem);
-            } else {
+            } else if (currentFormat === 'striptext') {
                 labelCount = generateStripLabels(data, createTextStripItem);
+            } else {
+                labelCount = generateStripLabels(data, createMixedStripItem);
             }
 
             var statsEl = document.getElementById('stats');
-            if (currentFormat === 'strip' || currentFormat === 'striptext') {
+            if (currentFormat !== 'standard') {
                 statsEl.innerHTML = '✅ Generated ' + data.length + ' strip(s) across ' + labelCount + ' label(s) — cut along dashed lines';
             } else {
                 statsEl.innerHTML = '✅ Generated ' + data.length + ' barcode(s)';
@@ -1306,7 +1353,7 @@
         }
         
         function printBarcodes() {
-            var isStrip = currentFormat === 'strip' || currentFormat === 'striptext';
+            var isStrip = currentFormat !== 'standard';
             var itemSelector = isStrip ? '.strip-label-pair' : '.barcode-item';
             var count = document.querySelectorAll(itemSelector).length;
             var message = 'Barcode Generator Gen2 - Print Settings\n\nPrinting Tips for Avery 5520 Labels:\n\n1. Use Chrome or Edge for best results\n2. Set margins to "Default" or "None"\n3. Disable "Headers and Footers"\n4. Set Scale to "100%" (no scaling)\n5. Feed labels correctly into printer\n\n';
@@ -1329,7 +1376,7 @@
             document.getElementById('barcodeGrid').innerHTML = '';
             document.getElementById('barcodeGrid').style.display = currentFormat === 'standard' ? 'grid' : 'none';
             document.getElementById('stripGrid').innerHTML = '';
-            document.getElementById('stripGrid').style.display = (currentFormat === 'strip' || currentFormat === 'striptext') ? 'grid' : 'none';
+            document.getElementById('stripGrid').style.display = currentFormat !== 'standard' ? 'grid' : 'none';
             document.getElementById('stats').innerHTML = '';
             document.getElementById('printBtn').style.display = 'none';
             document.getElementById('multiPageWarning').style.display = 'none';
