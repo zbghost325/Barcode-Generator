@@ -707,7 +707,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Barcode Generator Gen2</h1>
+        <h1>Barcode Generator Gen 3</h1>
         <p style="color: #666;">Generate Code-39 barcodes from Excel data</p>
         <p style="color: #28a745; font-size: 14px; margin-top: 5px;">&#x1F4C4; Optimized for Avery 5520 Labels (1" x 2&#x215D;")</p>
         <button class="info" onclick="showDocumentation()" style="margin-top: 10px;">&#x1F4D6; Documentation & Help</button>
@@ -783,7 +783,7 @@
     <div id="docModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>&#x1F4D6; Barcode Generator Gen2 - Documentation</h2>
+                <h2>&#x1F4D6; Barcode Generator Gen 3 - Documentation</h2>
                 <div class="modal-header-buttons">
                     <button class="print-doc-btn" onclick="printDocumentation()">&#x1F5A8; Print</button>
                     <button class="close" onclick="closeDocumentation()">&times;</button>
@@ -792,7 +792,7 @@
             <div class="modal-body" id="docContent">
                 <div class="print-only-section">
                     <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #007bff;">
-                        <h1 style="color: #007bff; margin: 0;">Barcode Generator Gen2</h1>
+                        <h1 style="color: #007bff; margin: 0;">Barcode Generator Gen 3</h1>
                         <p style="margin: 10px 0 0 0; color: #666;">User Documentation & Quick Start Guide</p>
                         <p style="margin: 5px 0 0 0; color: #999; font-size: 12px;" id="printDate"></p>
                     </div>
@@ -1059,7 +1059,7 @@
         function printDocumentation() {
             var printWindow = window.open('', '_blank');
             var docContent = document.getElementById('docContent').innerHTML;
-            var printHTML = '<!DOCTYPE html><html><head><title>Barcode Generator Gen2 - Documentation</title>' +
+            var printHTML = '<!DOCTYPE html><html><head><title>Barcode Generator Gen 3 - Documentation</title>' +
                 '<style>' +
                 'body { font-family: Arial, sans-serif; line-height: 1.4; color: #333; max-width: 8.5in; margin: 0 auto; padding: 0.25in; font-size: 11pt; }' +
                 'h1 { color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px; font-size: 20pt; }' +
@@ -1078,7 +1078,7 @@
                 '.doc-section { margin-bottom: 20px; } .print-only-section { display: block !important; } .screen-only { display: none !important; }' +
                 '@media print { body { margin: 0; padding: 0; } } @page { margin: 0.5in; size: letter; }' +
                 '</style></head><body>' +
-                '<h1>Barcode Generator Gen2 - Documentation</h1>' +
+                '<h1>Barcode Generator Gen 3 - Documentation</h1>' +
                 '<p style="text-align: center; color: #666; margin-bottom: 15px; font-size: 10pt;">Printed: ' +
                 new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) +
                 '</p>' + docContent + '</body></html>';
@@ -1356,7 +1356,7 @@
             var isStrip = currentFormat !== 'standard';
             var itemSelector = isStrip ? '.strip-label-pair' : '.barcode-item';
             var count = document.querySelectorAll(itemSelector).length;
-            var message = 'Barcode Generator Gen2 - Print Settings\n\nPrinting Tips for Avery 5520 Labels:\n\n1. Use Chrome or Edge for best results\n2. Set margins to "Default" or "None"\n3. Disable "Headers and Footers"\n4. Set Scale to "100%" (no scaling)\n5. Feed labels correctly into printer\n\n';
+            var message = 'Barcode Generator Gen 3 - Print Settings\n\nPrinting Tips for Avery 5520 Labels:\n\n1. Use Chrome or Edge for best results\n2. Set margins to "Default" or "None"\n3. Disable "Headers and Footers"\n4. Set Scale to "100%" (no scaling)\n5. Feed labels correctly into printer\n\n';
             
             if (isStrip) {
                 message += 'STRIP MODE: Each label has 2 strips.\nCut along the dashed line after printing.\n\n';
