@@ -749,7 +749,10 @@
 
         <div class="format-selector">
             <button class="format-option active" onclick="setFormat('standard')" id="fmtStandard">
-                &#x1F4CA; Standard Barcode
+                &#x1F4CA; Standard - C39
+            </button>
+            <button class="format-option" onclick="setFormat('c128')" id="fmtC128">
+                &#x1F4CA; Standard - C128
             </button>
             <button class="format-option" onclick="setFormat('strip')" id="fmtStrip">
                 &#x1F4CF; Strip - QR
@@ -1009,13 +1012,16 @@
         function setFormat(format) {
             currentFormat = format;
             document.getElementById('fmtStandard').classList.toggle('active', format === 'standard');
+            document.getElementById('fmtC128').classList.toggle('active', format === 'c128');
             document.getElementById('fmtStrip').classList.toggle('active', format === 'strip');
             document.getElementById('fmtStripText').classList.toggle('active', format === 'striptext');
             document.getElementById('fmtStripMix').classList.toggle('active', format === 'stripmix');
 
             var preview = document.getElementById('formatPreview');
             if (format === 'standard') {
-                preview.innerHTML = '<strong>Standard Barcode:</strong> Full-size label with device name, serial number, Code-39 barcode, and asset tag. One device per Avery 5520 label.';
+                preview.innerHTML = '<strong>Standard - Code 39:</strong> Full-size label with device name, serial number, Code-39 barcode, and asset tag. Wide bars, universally compatible.';
+            } else if (format === 'c128') {
+                preview.innerHTML = '<strong>Standard - Code 128:</strong> Full-size label with device name, serial number, Code-128 barcode, and asset tag. More compact — better for long or dense asset tags.';
             } else if (format === 'strip') {
                 preview.innerHTML = '<strong>Strip - QR:</strong> Two thin strips per label with SN and AT as QR codes plus device name. Cut along the dashed line. Best when you have a QR scanner.';
             } else if (format === 'striptext') {
@@ -1126,7 +1132,8 @@
             return data;
         }
 
-        function generateStandardBarcodes(data) {
+        function generateStandardBarcodes(data, barcodeFormat) {
+            var fmt = barcodeFormat || 'CODE39';
             var grid = document.getElementById('barcodeGrid');
             grid.innerHTML = '';
             grid.style.display = 'grid';
@@ -1159,8 +1166,8 @@
                 grid.appendChild(barcodeItem);
 
                 JsBarcode('#' + barcodeId, item.assetTag, {
-                    format: "CODE39",
-                    width: 2,
+                    format: fmt,
+                    width: fmt === 'CODE128' ? 1.5 : 2,
                     height: 35,
                     displayValue: false,
                     margin: 2,
@@ -1332,7 +1339,9 @@
 
             var labelCount;
             if (currentFormat === 'standard') {
-                labelCount = generateStandardBarcodes(data);
+                labelCount = generateStandardBarcodes(data, 'CODE39');
+            } else if (currentFormat === 'c128') {
+                labelCount = generateStandardBarcodes(data, 'CODE128');
             } else if (currentFormat === 'strip') {
                 labelCount = generateStripLabels(data, createStripItem);
             } else if (currentFormat === 'striptext') {
@@ -1342,7 +1351,7 @@
             }
 
             var statsEl = document.getElementById('stats');
-            if (currentFormat !== 'standard') {
+            if (currentFormat !== 'standard' && currentFormat !== 'c128') {
                 statsEl.innerHTML = '✅ Generated ' + data.length + ' strip(s) across ' + labelCount + ' label(s) — cut along dashed lines';
             } else {
                 statsEl.innerHTML = '✅ Generated ' + data.length + ' barcode(s)';
@@ -1357,7 +1366,7 @@
         }
         
         function printBarcodes() {
-            var isStrip = currentFormat !== 'standard';
+            var isStrip = currentFormat !== 'standard' && currentFormat !== 'c128';
             var itemSelector = isStrip ? '.strip-label-pair' : '.barcode-item';
             var count = document.querySelectorAll(itemSelector).length;
             var message = 'Barcode Generator Gen 3 - Print Settings\n\nPrinting Tips for Avery 5520 Labels:\n\n1. Use Chrome or Edge for best results\n2. Set margins to "Default" or "None"\n3. Disable "Headers and Footers"\n4. Set Scale to "100%" (no scaling)\n5. Feed labels correctly into printer\n\n';
@@ -1378,9 +1387,9 @@
         function clearAll() {
             document.getElementById('dataInput').value = '';
             document.getElementById('barcodeGrid').innerHTML = '';
-            document.getElementById('barcodeGrid').style.display = currentFormat === 'standard' ? 'grid' : 'none';
+            document.getElementById('barcodeGrid').style.display = (currentFormat === 'standard' || currentFormat === 'c128') ? 'grid' : 'none';
             document.getElementById('stripGrid').innerHTML = '';
-            document.getElementById('stripGrid').style.display = currentFormat !== 'standard' ? 'grid' : 'none';
+            document.getElementById('stripGrid').style.display = (currentFormat !== 'standard' && currentFormat !== 'c128') ? 'grid' : 'none';
             document.getElementById('stats').innerHTML = '';
             document.getElementById('printBtn').style.display = 'none';
             document.getElementById('multiPageWarning').style.display = 'none';
