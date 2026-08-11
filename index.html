@@ -505,36 +505,46 @@
             line-height: 1;
         }
 
-        /* ==================== SPLIT C128 STRIP STYLES ==================== */
-        /* Generous side padding keeps content clear of the die-cut label
-           edges, which printer feed alignment can shift by a fraction. */
+        /* ==================== SPLIT C128 STRIP STYLES ====================
+           These are cut-out stickers, not full-label prints: each strip is a
+           fixed 1.6in x 0.4in block sized to be trimmed out and stuck on a
+           small device, so two sit in the top-left of an Avery cell with the
+           rest of the label left blank. Sizes are in inches so the screen
+           preview and the print are literally the same dimensions. */
         .split-item {
             display: flex;
             align-items: stretch;
-            padding: 3px 9px;
-            gap: 4px;
-            height: 48px;
+            width: 1.6in;
+            height: 0.4in;
+            padding: 1px 4px;
+            gap: 3px;
+            margin-left: 0.05in;
             box-sizing: border-box;
         }
 
         .split-item:first-child {
+            margin-top: 0.04in;
             border-bottom: 1px dashed #ccc;
         }
 
-        /* Left half: SN / AT labels and values in aligned columns. */
+        /* Left half: SN / AT labels and values in aligned columns. The fixed
+           value column is deliberately narrower than a full serial so it
+           wraps onto two balanced lines, as on the reference label. */
+        /* font-size lives here rather than on the children so a single JS
+           fit pass can scale the whole block when a long serial wraps. */
         .split-left {
-            flex: 0 0 48%;
+            flex: 0 0 auto;
             display: grid;
-            grid-template-columns: auto minmax(0, 1fr);
-            column-gap: 5px;
-            row-gap: 2px;
+            grid-template-columns: auto 0.47in;
+            column-gap: 4px;
+            row-gap: 0;
             align-content: center;
             align-items: center;
-            min-width: 0;
+            font-size: 9px;
         }
 
         .split-field-label {
-            font-size: 10px;
+            font-size: inherit;
             font-weight: 800;
             color: #000;
             line-height: 1.1;
@@ -544,7 +554,7 @@
         /* balance splits a wrapped serial evenly instead of leaving one
            orphaned character on the second line. */
         .split-field-value {
-            font-size: 10px;
+            font-size: inherit;
             font-weight: 700;
             color: #000;
             line-height: 1.1;
@@ -554,10 +564,10 @@
         }
 
         .split-divider {
-            width: 3px;
+            width: 2px;
             background: #000;
             flex: 0 0 auto;
-            margin: 5px 0;
+            margin: 2px 0;
         }
 
         /* Right half: device name on top, its Code 128 barcode underneath. */
@@ -571,14 +581,26 @@
             min-width: 0;
         }
 
+        /* No text-wrap: balance here on purpose -- the reference label breaks
+           the name at its last fitting space ("Meta Quest 3" / "- 003"), which
+           is what plain wrapping does. balance would even the lines out
+           instead ("Meta Quest" / "3 - 003"). */
+        /* overflow-wrap, not word-break: break-word -- the latter behaves like
+           overflow-wrap: anywhere, which makes every position a break
+           opportunity and greedily packs "Meta Quest 3 -" onto the first line,
+           defeating the non-breaking space in formatSplitDeviceName. This only
+           breaks a word that cannot fit a line on its own. */
         .split-device-name {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
             color: #000;
             text-align: center;
-            line-height: 1.1;
-            word-break: break-word;
-            text-wrap: balance;
+            line-height: 1.05;
+            overflow-wrap: break-word;
+            /* align-items: center makes this box shrink-to-fit, so without an
+               explicit cap a long unbroken name sizes to max-content and
+               overflows sideways instead of wrapping. */
+            max-width: 100%;
             flex: 0 0 auto;
         }
 
@@ -587,9 +609,9 @@
            browser lightening the bars, which reads as haze on paper. */
         .split-bc {
             display: block;
-            width: 90%;
-            height: 28px;
-            min-height: 19px;
+            width: 96%;
+            height: 0.24in;
+            min-height: 0.15in;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             flex: 0 1 auto;
@@ -799,13 +821,9 @@
             }
 
             /* --- Split C128 strip print ---
-               Sizes are shared with the screen rules above, which are already
-               at true label scale (48px == 0.5in). Only genuinely
+               Every size is already specified in inches in the screen rules
+               above, so the print output is identical. Only genuinely
                print-specific things are overridden here. */
-            .split-item {
-                height: 0.5in;
-            }
-
             .split-item:first-child {
                 border-bottom: 1px dashed #aaa;
             }
@@ -814,10 +832,6 @@
                 background: #000 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
-            }
-
-            .split-bc {
-                height: 0.3in !important;
             }
         }
     </style>
@@ -894,6 +908,11 @@
         
         <div class="stats" id="stats"></div>
         
+        <div id="denseBarcodeWarning" style="display:none; background:#f8d7da; border:1px solid #dc3545; padding:10px; margin-top:10px; border-radius:4px;">
+            <strong>&#x26A0; Barcode too dense to scan reliably:</strong> These asset tags are too long to fit the 1.6&#8243; sticker at a scannable bar width (under 6.5 mil), so a laser scanner will probably fail on them: <code id="denseBarcodeList"></code>.
+            The text stays readable, but for scannable bars use a shorter asset tag or pick the <strong>Standard - C128</strong> format, which has the full label width to work with.
+        </div>
+
         <div id="multiPageWarning" style="display:none; background:#fff3cd; border:1px solid #ffc107; padding:10px; margin-top:10px; border-radius:4px;">
             <strong>&#x26A0; Multi-Page Printing:</strong> You have more than 30 labels. Page 1 will print correctly. For pages 2+, you may need to adjust your printer settings or print pages separately for best results.
         </div>
@@ -984,7 +1003,7 @@
                     <ul>
                         <li><strong>Standard Barcode:</strong> Full-size label with device name, serial number, Code-39 barcode, and asset tag number. One device per label.</li>
                         <li><strong>Strip Labels (2 per label):</strong> Each Avery 5520 label is split into two thin horizontal strips. Each strip has SN and AT QR codes plus the device name. Ideal for XR glasses, thin devices, or narrow surfaces.</li>
-                        <li><strong>Split - C128 (2 per label):</strong> Same half-height strip size as the Strip formats, but each strip is split down the middle by a vertical rule: serial number and asset tag as readable <code>SN:</code> / <code>AT:</code> text on the left, and on the right the device name with a Code-128 barcode of the asset tag directly underneath it. Use this when your scanners are 1D laser units that can't read QR codes.</li>
+                        <li><strong>Split - C128 (2 per label):</strong> Compact cut-out stickers, 1.6&#8243; wide by 0.4&#8243; tall, printed two to the top-left of each Avery label with the rest of the label left blank. Each sticker is split down the middle by a vertical rule: serial number and asset tag as readable <code>SN:</code> / <code>AT:</code> text on the left, and on the right the device name with a Code-128 barcode of the asset tag directly underneath it. Trim each sticker out and apply it to the device. Sized deliberately small for XR glasses and thin devices, and readable by 1D laser scanners that can't read QR codes.</li>
                     </ul>
                     
                     <h4>Generating Labels:</h4>
@@ -1129,6 +1148,10 @@
         /* Formats that render into #stripGrid (two half-height labels per Avery cell). */
         var STRIP_LAYOUT_FORMATS = ['strip', 'striptext', 'stripmix', 'splitc128'];
 
+        /* Practical floor for a 1D laser scanner reading Code 128. */
+        var MIN_NARROW_BAR_MIL = 6.5;
+        var splitDenseTags = [];
+
         function isStripLayout(format) {
             return STRIP_LAYOUT_FORMATS.indexOf(format) !== -1;
         }
@@ -1154,7 +1177,7 @@
             } else if (format === 'stripmix') {
                 preview.innerHTML = '<strong>Strip - Mixed:</strong> Two thin strips per label with SN as text, AT as QR code, plus device name. Cut along the dashed line. Best of both — scannable asset tag with readable serial number.';
             } else {
-                preview.innerHTML = '<strong>Split - C128:</strong> Two half labels per Avery label, each split down the middle: SN and AT as readable text on the left, device name on the right with its Code-128 asset tag barcode underneath. Cut along the dashed line. Best for 1D laser scanners.';
+                preview.innerHTML = '<strong>Split - C128:</strong> Compact 1.6&#8243; &times; 0.4&#8243; cut-out stickers, two per Avery label, each split down the middle: SN and AT as readable text on the left, device name on the right with its Code-128 asset tag barcode underneath. Trim each one out and stick it on the device. Sized small for XR glasses and thin devices.';
             }
 
             clearAll();
@@ -1438,6 +1461,16 @@
             parent.appendChild(valueEl);
         }
 
+        /* Keep a trailing " - 003" suffix whole so the name breaks before the
+           dash as it does on the reference label ("Meta Quest 3" / "- 003"),
+           not after it ("Meta Quest 3 -" / "003"). Needs both characters: a
+           hyphen is itself a break opportunity, so U+2060 WORD JOINER
+           suppresses the break after it, and U+00A0 keeps the following space
+           from breaking either. */
+        function formatSplitDeviceName(name) {
+            return name.replace(/ - (\S+)$/, ' -\u2060\u00A0$1');
+        }
+
         function createSplitC128Item(item, index) {
             var strip = document.createElement('div');
             strip.className = 'split-item';
@@ -1454,7 +1487,7 @@
             right.className = 'split-right';
             var name = document.createElement('div');
             name.className = 'split-device-name';
-            name.textContent = item.deviceName;
+            name.textContent = formatSplitDeviceName(item.deviceName);
             var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.id = 'split-bc-' + index;
             svg.setAttribute('class', 'split-bc');
@@ -1468,13 +1501,14 @@
             return strip;
         }
 
-        /* A device name long enough to wrap past two lines would push the
-           barcode out of the strip, so step the font down until it fits
-           rather than truncating the name. */
-        function fitDeviceName(el) {
-            var size = 10;
+        /* Text long enough to wrap an extra line would overflow the 0.4in
+           strip -- a long device name pushes out the barcode, a long serial
+           pushes out the AT row. Step the font down until it fits rather than
+           truncating, so no data is ever lost. */
+        function fitFontToHeight(el, startSize, minSize, maxHeight) {
+            var size = startSize;
             el.style.fontSize = size + 'px';
-            while (size > 6.5 && el.scrollHeight > 23) {
+            while (size > minSize && el.scrollHeight > maxHeight) {
                 size -= 0.5;
                 el.style.fontSize = size + 'px';
             }
@@ -1486,7 +1520,7 @@
            10-module quiet zone, which scales with the barcode. */
         function renderSplitBarcode(svgId, value) {
             var svg = document.getElementById(svgId);
-            if (!svg) { return; }
+            if (!svg) { return null; }
             try {
                 JsBarcode(svg, value, {
                     format: 'CODE128',
@@ -1500,7 +1534,7 @@
                     lineColor: "#000000"
                 });
             } catch (e) {
-                return;
+                return null;
             }
             /* JsBarcode writes these with a "px" suffix, which is illegal in a viewBox. */
             var w = parseFloat(svg.getAttribute('width'));
@@ -1516,6 +1550,7 @@
                prints as haze. crispEdges snaps every edge to a hard boundary. */
             svg.setAttribute('shape-rendering', 'crispEdges');
             svg.setAttribute('class', 'split-bc');
+            return svg;
         }
 
         function generateSplitC128Labels(data) {
@@ -1542,10 +1577,27 @@
                 grid.appendChild(pair);
             }
 
-            grid.querySelectorAll('.split-device-name').forEach(fitDeviceName);
+            /* 36px is the strip height less its vertical padding; 20px is two
+               lines of the device name, leaving room for the barcode. */
+            grid.querySelectorAll('.split-left').forEach(function(el) {
+                fitFontToHeight(el, 9, 6, 36);
+            });
+            grid.querySelectorAll('.split-device-name').forEach(function(el) {
+                fitFontToHeight(el, 9, 6, 20);
+            });
 
+            /* The strip is a fixed width, so a long or alphanumeric asset tag
+               packs in more modules and the bars get too narrow to scan.
+               Collect any that fall below the practical limit for a 1D laser. */
+            splitDenseTags = [];
             data.forEach(function(item, index) {
-                renderSplitBarcode('split-bc-' + index, item.assetTag);
+                var svg = renderSplitBarcode('split-bc-' + index, item.assetTag);
+                if (!svg) { return; }
+                var units = parseFloat((svg.getAttribute('viewBox') || '').split(' ')[2]);
+                var widthIn = svg.getBoundingClientRect().width / 96;
+                if (units && widthIn && (widthIn / units) * 1000 < MIN_NARROW_BAR_MIL) {
+                    splitDenseTags.push(item.assetTag);
+                }
             });
 
             return Math.ceil(data.length / 2);
@@ -1608,10 +1660,20 @@
             }
 
             var statsEl = document.getElementById('stats');
-            if (isStripLayout(currentFormat)) {
+            if (currentFormat === 'splitc128') {
+                statsEl.innerHTML = '✅ Generated ' + data.length + ' sticker(s) across ' + labelCount + ' label(s) — trim each one out';
+            } else if (isStripLayout(currentFormat)) {
                 statsEl.innerHTML = '✅ Generated ' + data.length + ' strip(s) across ' + labelCount + ' label(s) — cut along dashed lines';
             } else {
                 statsEl.innerHTML = '✅ Generated ' + data.length + ' barcode(s)';
+            }
+
+            var denseWarning = document.getElementById('denseBarcodeWarning');
+            if (currentFormat === 'splitc128' && splitDenseTags.length > 0) {
+                document.getElementById('denseBarcodeList').textContent = splitDenseTags.join(', ');
+                denseWarning.style.display = 'block';
+            } else {
+                denseWarning.style.display = 'none';
             }
             document.getElementById('printBtn').style.display = 'inline-block';
 
@@ -1633,7 +1695,7 @@
             }
 
             if (currentFormat === 'splitc128') {
-                message += 'FOR CRISP BARCODES:\n- Set print quality to "Best" or "High" (600 dpi or more)\n- Turn OFF draft mode, toner save and "economy" mode\n- A laser printer gives sharper bars than inkjet\n\n';
+                message += 'SPLIT MODE: Each sticker prints 1.6" x 0.4" in the\ntop-left of its label. Trim each one out along its edges.\n\nFOR CRISP BARCODES:\n- Set print quality to "Best" or "High" (600 dpi or more)\n- Turn OFF draft mode, toner save and "economy" mode\n- A laser printer gives sharper bars than inkjet\n\n';
             }
 
             if (count > 30) {
@@ -1654,6 +1716,7 @@
             document.getElementById('stats').innerHTML = '';
             document.getElementById('printBtn').style.display = 'none';
             document.getElementById('multiPageWarning').style.display = 'none';
+            document.getElementById('denseBarcodeWarning').style.display = 'none';
         }
         
         document.getElementById('dataInput').addEventListener('paste', function(e) {
