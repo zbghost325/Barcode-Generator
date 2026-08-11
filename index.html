@@ -717,6 +717,46 @@
             print-color-adjust: exact;
         }
 
+        /* --- Alignment test sheet ---
+           Outlines at the exact die-cut positions plus two rulers. Printed on
+           plain paper and laid over a label sheet this separates the two
+           failure modes: if the rulers do not measure their stated length the
+           printer is scaling, and if they do but the outlines sit off the die
+           cuts it is a pure offset. */
+        .cable-flag-outline {
+            outline: none !important;
+            border: 1px solid #000;
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .cable-flag-outline .cable-fold {
+            border-top: 1px dashed #000 !important;
+        }
+
+        .cable-ruler {
+            position: absolute;
+            background: #000;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .cable-ruler-cap {
+            position: absolute;
+            background: #000;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .cable-ruler-label {
+            position: absolute;
+            font-size: 9px;
+            font-weight: 700;
+            color: #000;
+            white-space: nowrap;
+        }
+
         .example-table {
             margin-top: 10px;
             border-collapse: collapse;
@@ -1046,9 +1086,16 @@
                 <label>Shift up
                     <input type="number" id="cableOffsetY" step="0.01" value="0" style="width:80px; padding:4px; font-size:13px;"> in
                 </label>
+                <label>Scale
+                    <input type="number" id="cableScale" step="0.1" value="100" style="width:80px; padding:4px; font-size:13px;"> %
+                </label>
                 <button onclick="applyCableOffset()" style="padding:6px 14px; font-size:13px;">Apply</button>
                 <button class="secondary" onclick="resetCableOffset()" style="padding:6px 14px; font-size:13px;">Reset</button>
                 <span id="cableOffsetNote" style="color:#0056b3;"></span>
+            </div>
+            <div style="margin-top:10px; padding-top:10px; border-top:1px solid #b8d4f5;">
+                <button class="info" onclick="showCableTestSheet()" style="padding:6px 14px; font-size:13px;">&#x1F4CF; Show alignment test sheet</button>
+                <span style="color:#555; margin-left:8px;">Outlines and two rulers, no data needed. Print on plain paper, measure the rulers, then lay it over a label sheet.</span>
             </div>
             <div style="margin-top:8px; color:#555;">
                 Negative values shift the other way. <strong>Check the print preview page count first:</strong> if there is an extra blank page at the end, Margins is not set to <strong>None</strong> and the sheet is being pushed off the page &mdash; fix that before nudging, because no offset will correct it. Scale must be <strong>100%</strong>, not &ldquo;Fit to page&rdquo;.
@@ -1336,6 +1383,7 @@
                 var o = readCableOffset();
                 document.getElementById('cableOffsetX').value = o.x;
                 document.getElementById('cableOffsetY').value = o.y;
+                document.getElementById('cableScale').value = o.s;
                 paintCableOffset();
             }
 
@@ -1794,39 +1842,124 @@
         function readCableOffset() {
             var x = parseFloat(localStorage.getItem('cableOffsetX'));
             var y = parseFloat(localStorage.getItem('cableOffsetY'));
+            var s = parseFloat(localStorage.getItem('cableScale'));
             return {
                 x: isNaN(x) ? 0 : x,
-                y: isNaN(y) ? 0 : y
+                y: isNaN(y) ? 0 : y,
+                s: (isNaN(s) || s <= 0) ? 100 : s
             };
         }
 
+        /* transform-origin is the sheet's top-left so scale and offset stay
+           independent -- scaling about the centre would move everything as
+           well, making the two controls fight each other. */
         function paintCableOffset() {
             var o = readCableOffset();
             document.querySelectorAll('.cable-sheet').forEach(function(sheet) {
-                sheet.style.transform = 'translate(' + o.x + 'in, ' + (-o.y) + 'in)';
+                sheet.style.transformOrigin = '0 0';
+                sheet.style.transform = 'translate(' + o.x + 'in, ' + (-o.y) + 'in) scale(' + (o.s / 100) + ')';
             });
             var note = document.getElementById('cableOffsetNote');
             if (note) {
-                note.textContent = (o.x || o.y)
-                    ? 'Applied: ' + o.x + 'in right, ' + o.y + 'in up'
-                    : '';
+                var bits = [];
+                if (o.x) { bits.push(o.x + 'in right'); }
+                if (o.y) { bits.push(o.y + 'in up'); }
+                if (o.s !== 100) { bits.push(o.s + '% scale'); }
+                note.textContent = bits.length ? 'Applied: ' + bits.join(', ') : '';
             }
         }
 
         function applyCableOffset() {
             var x = parseFloat(document.getElementById('cableOffsetX').value) || 0;
             var y = parseFloat(document.getElementById('cableOffsetY').value) || 0;
+            var s = parseFloat(document.getElementById('cableScale').value);
+            if (isNaN(s) || s <= 0) { s = 100; }
             localStorage.setItem('cableOffsetX', x);
             localStorage.setItem('cableOffsetY', y);
+            localStorage.setItem('cableScale', s);
             paintCableOffset();
         }
 
         function resetCableOffset() {
             localStorage.removeItem('cableOffsetX');
             localStorage.removeItem('cableOffsetY');
+            localStorage.removeItem('cableScale');
             document.getElementById('cableOffsetX').value = 0;
             document.getElementById('cableOffsetY').value = 0;
+            document.getElementById('cableScale').value = 100;
             paintCableOffset();
+        }
+
+        function addCableRuler(sheet, opts) {
+            var bar = document.createElement('div');
+            bar.className = 'cable-ruler';
+            var cap1 = document.createElement('div');
+            var cap2 = document.createElement('div');
+            cap1.className = cap2.className = 'cable-ruler-cap';
+            var label = document.createElement('div');
+            label.className = 'cable-ruler-label';
+            label.textContent = opts.len.toFixed(3) + ' in — measure me';
+
+            if (opts.horizontal) {
+                bar.style.cssText = 'left:' + opts.left + 'in; top:' + opts.top + 'in; width:' + opts.len + 'in; height:0.012in;';
+                cap1.style.cssText = 'left:' + opts.left + 'in; top:' + (opts.top - 0.05) + 'in; width:0.012in; height:0.11in;';
+                cap2.style.cssText = 'left:' + (opts.left + opts.len - 0.012) + 'in; top:' + (opts.top - 0.05) + 'in; width:0.012in; height:0.11in;';
+                label.style.cssText = 'left:' + (opts.left + 0.06) + 'in; top:' + (opts.top + 0.08) + 'in;';
+            } else {
+                bar.style.cssText = 'left:' + opts.left + 'in; top:' + opts.top + 'in; width:0.012in; height:' + opts.len + 'in;';
+                cap1.style.cssText = 'left:' + (opts.left - 0.05) + 'in; top:' + opts.top + 'in; width:0.11in; height:0.012in;';
+                cap2.style.cssText = 'left:' + (opts.left - 0.05) + 'in; top:' + (opts.top + opts.len - 0.012) + 'in; width:0.11in; height:0.012in;';
+                label.style.cssText = 'left:' + (opts.left + 0.06) + 'in; top:' + (opts.top + opts.len / 2) + 'in;';
+            }
+            sheet.appendChild(bar);
+            sheet.appendChild(cap1);
+            sheet.appendChild(cap2);
+            sheet.appendChild(label);
+        }
+
+        /* Outlines at the exact die-cut positions, no barcodes or text. */
+        function showCableTestSheet() {
+            var host = document.getElementById('cableSheets');
+            host.innerHTML = '';
+            host.style.display = 'block';
+            document.getElementById('barcodeGrid').style.display = 'none';
+            document.getElementById('stripGrid').style.display = 'none';
+
+            var sheet = document.createElement('div');
+            sheet.className = 'cable-sheet';
+
+            cableSlots().forEach(function(slot) {
+                var flag = document.createElement('div');
+                flag.className = 'cable-flag cable-flag-outline tail-' + slot.tail;
+                flag.style.left = slot.left.toFixed(3) + 'in';
+                flag.style.top = (CABLE.sheetH - slot.bottom - CABLE.flagH).toFixed(3) + 'in';
+                var rot = document.createElement('div');
+                rot.className = 'cable-rot';
+                var f1 = document.createElement('div');
+                f1.className = 'cable-face';
+                var fold = document.createElement('div');
+                fold.className = 'cable-fold';
+                var f2 = document.createElement('div');
+                f2.className = 'cable-face';
+                rot.appendChild(f1);
+                rot.appendChild(fold);
+                rot.appendChild(f2);
+                flag.appendChild(rot);
+                sheet.appendChild(flag);
+            });
+
+            /* Rulers land in the gaps between flag rows. */
+            addCableRuler(sheet, {horizontal: true, left: 1.75, top: 2.05, len: 5});
+            addCableRuler(sheet, {horizontal: false, left: 0.14, top: 1.0, len: 8});
+
+            host.appendChild(sheet);
+            paintCableOffset();
+
+            document.getElementById('stats').innerHTML =
+                '\u{1F4CF} Alignment test sheet — print on plain paper, measure both rulers, then lay it over a label sheet';
+            document.getElementById('printBtn').style.display = 'inline-block';
+            document.getElementById('denseBarcodeWarning').style.display = 'none';
+            document.getElementById('multiPageWarning').style.display = 'none';
         }
 
         /* The 30 flag positions on a sheet, in reading order (top to bottom,
