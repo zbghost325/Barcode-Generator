@@ -1027,6 +1027,24 @@
                 &#x1F50C; Cable - 61540
             </button>
         </div>
+        <div id="cableCalibration" style="display:none; background:#e7f1ff; border:1px solid #007bff; padding:12px; margin-top:10px; border-radius:4px; font-size:13px;">
+            <strong>&#x1F4D0; Print alignment</strong> &mdash; nudge the whole sheet so the flags land on the labels. Saved for next time.
+            <div style="margin-top:8px; display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+                <label>Shift right
+                    <input type="number" id="cableOffsetX" step="0.01" value="0" style="width:80px; padding:4px; font-size:13px;"> in
+                </label>
+                <label>Shift up
+                    <input type="number" id="cableOffsetY" step="0.01" value="0" style="width:80px; padding:4px; font-size:13px;"> in
+                </label>
+                <button onclick="applyCableOffset()" style="padding:6px 14px; font-size:13px;">Apply</button>
+                <button class="secondary" onclick="resetCableOffset()" style="padding:6px 14px; font-size:13px;">Reset</button>
+                <span id="cableOffsetNote" style="color:#0056b3;"></span>
+            </div>
+            <div style="margin-top:8px; color:#555;">
+                Negative values shift the other way. If the error grows down the page rather than staying constant, the printer is scaling &mdash; set Scale to <strong>100%</strong> and Margins to <strong>None</strong>, not &ldquo;Fit to page&rdquo;.
+            </div>
+        </div>
+
         <div class="format-preview" id="formatPreview">
             <strong>Standard Barcode:</strong> Full-size label with device name, serial number, Code-39 barcode, and asset tag. One device per Avery 5520 label.
         </div>
@@ -1301,6 +1319,15 @@
             document.getElementById('fmtStripMix').classList.toggle('active', format === 'stripmix');
             document.getElementById('fmtSplitC128').classList.toggle('active', format === 'splitc128');
             document.getElementById('fmtCable61540').classList.toggle('active', format === 'cable61540');
+
+            var calib = document.getElementById('cableCalibration');
+            calib.style.display = (format === 'cable61540') ? 'block' : 'none';
+            if (format === 'cable61540') {
+                var o = readCableOffset();
+                document.getElementById('cableOffsetX').value = o.x;
+                document.getElementById('cableOffsetY').value = o.y;
+                paintCableOffset();
+            }
 
             var preview = document.getElementById('formatPreview');
             if (format === 'standard') {
@@ -1749,6 +1776,48 @@
 
         var CABLE_PER_SHEET = CABLE.cols * CABLE.rowPairs * 2;
 
+        /* Printer alignment nudge. Every printer lands the page slightly
+           differently, so rather than baking one machine's offset into the
+           geometry this shifts the whole sheet and remembers the value. Applied
+           on screen as well as in print so the preview tells the truth. */
+        function readCableOffset() {
+            var x = parseFloat(localStorage.getItem('cableOffsetX'));
+            var y = parseFloat(localStorage.getItem('cableOffsetY'));
+            return {
+                x: isNaN(x) ? 0 : x,
+                y: isNaN(y) ? 0 : y
+            };
+        }
+
+        function paintCableOffset() {
+            var o = readCableOffset();
+            document.querySelectorAll('.cable-sheet').forEach(function(sheet) {
+                sheet.style.transform = 'translate(' + o.x + 'in, ' + (-o.y) + 'in)';
+            });
+            var note = document.getElementById('cableOffsetNote');
+            if (note) {
+                note.textContent = (o.x || o.y)
+                    ? 'Applied: ' + o.x + 'in right, ' + o.y + 'in up'
+                    : '';
+            }
+        }
+
+        function applyCableOffset() {
+            var x = parseFloat(document.getElementById('cableOffsetX').value) || 0;
+            var y = parseFloat(document.getElementById('cableOffsetY').value) || 0;
+            localStorage.setItem('cableOffsetX', x);
+            localStorage.setItem('cableOffsetY', y);
+            paintCableOffset();
+        }
+
+        function resetCableOffset() {
+            localStorage.removeItem('cableOffsetX');
+            localStorage.removeItem('cableOffsetY');
+            document.getElementById('cableOffsetX').value = 0;
+            document.getElementById('cableOffsetY').value = 0;
+            paintCableOffset();
+        }
+
         /* The 30 flag positions on a sheet, in reading order (top to bottom,
            left to right) so pasted rows land where you would expect. */
         function cableSlots() {
@@ -1835,6 +1904,8 @@
             host.querySelectorAll('.cable-face-text').forEach(function(face) {
                 fitTextToBox(face, face.firstChild, 7, 4.5);
             });
+
+            paintCableOffset();
 
             cableDenseTags = [];
             data.forEach(function(item, index) {
