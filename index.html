@@ -617,6 +617,106 @@
             flex: 0 1 auto;
         }
 
+        /* ============ AVERY 61540 P-STYLE CABLE FLAG LABELS ============
+           Geometry measured from Avery's own blank template PDF
+           (AveryPresta61540CableLabels.pdf), all values in inches. The flag is
+           the printable paddle, 1.02 x 1.46; the 0.315 x 1.84 tail wraps the
+           cable and is not printed on. Rows alternate orientation so the tails
+           interleave -- that is the only way 30 fit on a letter sheet -- so the
+           whole flag content is rotated 180 degrees on alternate rows.
+
+           Positions are absolute against a full 8.5 x 11in sheet, which is why
+           this format needs a zero-margin @page (see the named page below)
+           rather than the grid-plus-nudges the Avery 5520 formats use. */
+        .cable-sheet {
+            position: relative;
+            width: 8.5in;
+            height: 11in;
+            background: white;
+            margin: 20px auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .cable-flag {
+            position: absolute;
+            width: 1.02in;
+            height: 1.46in;
+            outline: 1px dashed #ddd;
+        }
+
+        /* Content is laid out along the long axis then rotated, so text reads
+           down the flag. A 1.46 x 1.02 box rotated 90deg fills the 1.02 x 1.46
+           flag exactly. */
+        .cable-rot {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 1.46in;
+            height: 1.02in;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cable-flag.tail-below .cable-rot {
+            transform: translate(-50%, -50%) rotate(-90deg);
+        }
+
+        .cable-flag.tail-above .cable-rot {
+            transform: translate(-50%, -50%) rotate(90deg);
+        }
+
+        /* The two faces that come together when the flag is folded in half. */
+        .cable-face {
+            flex: 1 1 0;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .cable-face-text {
+            padding: 0.02in 0.06in;
+            font-size: 7px;
+            font-weight: 700;
+            line-height: 1.15;
+            text-align: center;
+            color: #000;
+        }
+
+        /* The text needs its own block inside the centring flex face: a flex
+           container reports its own height as scrollHeight, so there would be
+           no way to detect that the text overflows. width/max-height pin this
+           to the face's content box so scrollHeight > clientHeight means
+           exactly "does not fit". */
+        .cable-text {
+            width: 100%;
+            max-height: 100%;
+            overflow: hidden;
+            overflow-wrap: break-word;
+        }
+
+        .cable-face-bc {
+            padding: 0.045in 0.06in;
+        }
+
+        /* Screen-only fold guide, matching the magenta line on Avery's own
+           template. Deliberately not printed. */
+        .cable-fold {
+            flex: 0 0 auto;
+            height: 0;
+            border-top: 1px dashed #e58fd0;
+        }
+
+        .cable-bc {
+            display: block;
+            width: 100%;
+            height: 100%;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
         .example-table {
             margin-top: 10px;
             border-collapse: collapse;
@@ -833,6 +933,36 @@
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
+
+            /* --- Avery 61540 cable flag print ---
+               A named page so this format alone prints with zero margins: the
+               flag positions are absolute against the full 8.5 x 11in sheet,
+               and the default 0.6in top margin would push the top row of flags
+               off the printable area entirely. */
+            @page cable-page {
+                size: letter;
+                margin: 0;
+            }
+
+            .cable-sheet {
+                page: cable-page;
+                margin: 0;
+                box-shadow: none;
+                page-break-after: always;
+            }
+
+            .cable-sheet:last-child {
+                page-break-after: auto;
+            }
+
+            /* Guides are for positioning on screen only -- never on the label. */
+            .cable-flag {
+                outline: none;
+            }
+
+            .cable-fold {
+                border-top: none;
+            }
         }
     </style>
 </head>
@@ -893,6 +1023,9 @@
             <button class="format-option" onclick="setFormat('splitc128')" id="fmtSplitC128">
                 &#x1F4CF; Split - C128
             </button>
+            <button class="format-option" onclick="setFormat('cable61540')" id="fmtCable61540">
+                &#x1F50C; Cable - 61540
+            </button>
         </div>
         <div class="format-preview" id="formatPreview">
             <strong>Standard Barcode:</strong> Full-size label with device name, serial number, Code-39 barcode, and asset tag. One device per Avery 5520 label.
@@ -920,6 +1053,7 @@
     
     <div class="barcode-grid" id="barcodeGrid"></div>
     <div class="strip-grid" id="stripGrid" style="display:none;"></div>
+    <div id="cableSheets" style="display:none;"></div>
     
     <!-- Documentation Modal -->
     <div id="docModal" class="modal">
@@ -1003,6 +1137,7 @@
                     <ul>
                         <li><strong>Standard Barcode:</strong> Full-size label with device name, serial number, Code-39 barcode, and asset tag number. One device per label.</li>
                         <li><strong>Strip Labels (2 per label):</strong> Each Avery 5520 label is split into two thin horizontal strips. Each strip has SN and AT QR codes plus the device name. Ideal for XR glasses, thin devices, or narrow surfaces.</li>
+                        <li><strong>Cable - 61540 (30 per sheet):</strong> Avery <strong>61540 P-style cable flags</strong> &mdash; different label stock from all the other formats, which use Avery 5520. Each flag is a 1.02&#8243; &times; 1.46&#8243; paddle on a 0.315&#8243; &times; 1.84&#8243; tail that wraps around the cable. Fold the paddle in half along its centre: one face carries wrapping text, the other a Code-128 barcode. Rows alternate orientation so the tails interleave, which is how 30 fit on a sheet. Paste <strong>Text | Barcode Value</strong>; three-column device data also works, using the first column as the text and the last as the barcode. This format gives the best barcode quality in the tool &mdash; about 13.5 mil bars, 11mm tall &mdash; because a whole fold face is given over to it. <strong>Print margins must be set to None</strong>, since flag positions are absolute on the sheet.</li>
                         <li><strong>Split - C128 (2 per label):</strong> Compact cut-out stickers, 1.6&#8243; wide by 0.4&#8243; tall, printed two to the top-left of each Avery label with the rest of the label left blank. Each sticker is split down the middle by a vertical rule: serial number and asset tag as readable <code>SN:</code> / <code>AT:</code> text on the left, and on the right the device name with a Code-128 barcode of the asset tag directly underneath it. Trim each sticker out and apply it to the device. Sized deliberately small for XR glasses and thin devices, and readable by 1D laser scanners that can't read QR codes.</li>
                     </ul>
                     
@@ -1151,6 +1286,7 @@
         /* Practical floor for a 1D laser scanner reading Code 128. */
         var MIN_NARROW_BAR_MIL = 6.5;
         var splitDenseTags = [];
+        var cableDenseTags = [];
 
         function isStripLayout(format) {
             return STRIP_LAYOUT_FORMATS.indexOf(format) !== -1;
@@ -1164,6 +1300,7 @@
             document.getElementById('fmtStripText').classList.toggle('active', format === 'striptext');
             document.getElementById('fmtStripMix').classList.toggle('active', format === 'stripmix');
             document.getElementById('fmtSplitC128').classList.toggle('active', format === 'splitc128');
+            document.getElementById('fmtCable61540').classList.toggle('active', format === 'cable61540');
 
             var preview = document.getElementById('formatPreview');
             if (format === 'standard') {
@@ -1176,6 +1313,8 @@
                 preview.innerHTML = '<strong>Strip - Text:</strong> Two thin strips per label with SN and AT as plain text plus device name. Cut along the dashed line. Best when QR codes print blurry or no scanner available.';
             } else if (format === 'stripmix') {
                 preview.innerHTML = '<strong>Strip - Mixed:</strong> Two thin strips per label with SN as text, AT as QR code, plus device name. Cut along the dashed line. Best of both — scannable asset tag with readable serial number.';
+            } else if (format === 'cable61540') {
+                preview.innerHTML = '<strong>Cable - 61540:</strong> Avery 61540 P-style cable flags, 30 per sheet. Each flag folds in half: wrapping text on one face, a Code-128 barcode on the other. Paste <strong>Text | Barcode Value</strong> (your existing 3-column data also works). Highest barcode quality of any format here — about 13.5 mil bars. Needs Avery 61540 stock and margins set to None.';
             } else {
                 preview.innerHTML = '<strong>Split - C128:</strong> Compact 1.6&#8243; &times; 0.4&#8243; cut-out stickers, two per Avery label, each split down the middle: SN and AT as readable text on the left, device name on the right with its Code-128 asset tag barcode underneath. Trim each one out and stick it on the device. Sized small for XR glasses and thin devices.';
             }
@@ -1276,6 +1415,29 @@
                         deviceName: parts[0].trim(),
                         serialNumber: parts[1].trim(),
                         assetTag: parts[2].trim()
+                    });
+                }
+            }
+            return data;
+        }
+
+        /* Cable flags need only a text side and a value to encode. Two columns
+           is the natural input, but the existing three-column device sheets are
+           accepted too -- first column becomes the text, last the barcode -- so
+           data prepared for the other formats can be reused as is. */
+        function parseCableData(text) {
+            var lines = text.trim().split('\n');
+            var data = [];
+            for (var i = 0; i < lines.length; i++) {
+                if (!lines[i].trim()) { continue; }
+                var parts = lines[i].split('\t');
+                if (parts.length < 2) {
+                    parts = lines[i].split(/\s{2,}/);
+                }
+                if (parts.length >= 2) {
+                    data.push({
+                        text: parts[0].trim(),
+                        barcodeValue: parts[parts.length - 1].trim()
                     });
                 }
             }
@@ -1505,6 +1667,18 @@
            strip -- a long device name pushes out the barcode, a long serial
            pushes out the AT row. Step the font down until it fits rather than
            truncating, so no data is ever lost. */
+        /* Shrink until the inner block stops overflowing its clipped box.
+           scrollHeight > clientHeight is the overflow test, and both are layout
+           values so the surrounding rotation does not affect them. */
+        function fitTextToBox(face, inner, startSize, minSize) {
+            var size = startSize;
+            face.style.fontSize = size + 'px';
+            while (size > minSize && inner.scrollHeight > inner.clientHeight) {
+                size -= 0.25;
+                face.style.fontSize = size + 'px';
+            }
+        }
+
         function fitFontToHeight(el, startSize, minSize, maxHeight) {
             var size = startSize;
             el.style.fontSize = size + 'px';
@@ -1515,11 +1689,10 @@
         }
 
         /* Rendered after the SVG is in the DOM, then given a viewBox so CSS can
-           stretch it to the full width of the right half without cropping bars.
-           marginLeft/Right of 10 at width:1 gives Code 128 its required
-           10-module quiet zone, which scales with the barcode. */
-        function renderSplitBarcode(svgId, value) {
-            var svg = document.getElementById(svgId);
+           stretch it to fill its box without cropping bars. marginLeft/Right of
+           10 at width:1 gives Code 128 its required 10-module quiet zone, which
+           then scales with the barcode. Shared by the split and cable formats. */
+        function renderCode128(svg, value, cssClass) {
             if (!svg) { return null; }
             try {
                 JsBarcode(svg, value, {
@@ -1549,8 +1722,136 @@
                mid-pixel and get anti-aliased into grey fringes -- that is what
                prints as haze. crispEdges snaps every edge to a hard boundary. */
             svg.setAttribute('shape-rendering', 'crispEdges');
-            svg.setAttribute('class', 'split-bc');
+            svg.setAttribute('class', cssClass);
             return svg;
+        }
+
+        function renderSplitBarcode(svgId, value) {
+            return renderCode128(document.getElementById(svgId), value, 'split-bc');
+        }
+
+        /* Avery 61540 P-style cable flag geometry, measured from Avery's own
+           blank template PDF. Inches. Rows come in pairs: one with the tail
+           below the flag, one with the tail above, staggered horizontally by
+           0.635in so the tails interleave and 30 fit on a letter sheet. */
+        var CABLE = {
+            flagW: 1.020,
+            flagH: 1.460,
+            colPitch: 1.520,
+            rowPitch: 3.425,
+            leftTailBelow: 1.018,
+            bottomTailBelow: 9.115,
+            leftTailAbove: 0.383,
+            bottomTailAbove: 7.275,
+            cols: 5,
+            rowPairs: 3
+        };
+
+        var CABLE_PER_SHEET = CABLE.cols * CABLE.rowPairs * 2;
+
+        /* The 30 flag positions on a sheet, in reading order (top to bottom,
+           left to right) so pasted rows land where you would expect. */
+        function cableSlots() {
+            var rows = [];
+            for (var k = 0; k < CABLE.rowPairs; k++) {
+                rows.push({
+                    bottom: CABLE.bottomTailBelow - CABLE.rowPitch * k,
+                    left0: CABLE.leftTailBelow,
+                    tail: 'below'
+                });
+                rows.push({
+                    bottom: CABLE.bottomTailAbove - CABLE.rowPitch * k,
+                    left0: CABLE.leftTailAbove,
+                    tail: 'above'
+                });
+            }
+            var slots = [];
+            rows.forEach(function(row) {
+                for (var c = 0; c < CABLE.cols; c++) {
+                    slots.push({
+                        left: row.left0 + CABLE.colPitch * c,
+                        bottom: row.bottom,
+                        tail: row.tail
+                    });
+                }
+            });
+            return slots;
+        }
+
+        function createCableFlag(item, slot, index) {
+            var flag = document.createElement('div');
+            flag.className = 'cable-flag tail-' + slot.tail;
+            flag.style.left = slot.left.toFixed(3) + 'in';
+            flag.style.bottom = slot.bottom.toFixed(3) + 'in';
+
+            var rot = document.createElement('div');
+            rot.className = 'cable-rot';
+
+            var textFace = document.createElement('div');
+            textFace.className = 'cable-face cable-face-text';
+            var textInner = document.createElement('div');
+            textInner.className = 'cable-text';
+            textInner.textContent = item.text;
+            textFace.appendChild(textInner);
+
+            var fold = document.createElement('div');
+            fold.className = 'cable-fold';
+
+            var bcFace = document.createElement('div');
+            bcFace.className = 'cable-face cable-face-bc';
+            var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.id = 'cable-bc-' + index;
+            svg.setAttribute('class', 'cable-bc');
+            bcFace.appendChild(svg);
+
+            rot.appendChild(textFace);
+            rot.appendChild(fold);
+            rot.appendChild(bcFace);
+            flag.appendChild(rot);
+            return flag;
+        }
+
+        function generateCableLabels(data) {
+            var host = document.getElementById('cableSheets');
+            host.innerHTML = '';
+            host.style.display = 'block';
+            document.getElementById('barcodeGrid').style.display = 'none';
+            document.getElementById('stripGrid').style.display = 'none';
+
+            var slots = cableSlots();
+            var sheets = Math.ceil(data.length / CABLE_PER_SHEET);
+
+            for (var s = 0; s < sheets; s++) {
+                var sheet = document.createElement('div');
+                sheet.className = 'cable-sheet';
+                for (var i = 0; i < CABLE_PER_SHEET; i++) {
+                    var idx = s * CABLE_PER_SHEET + i;
+                    if (idx >= data.length) { break; }
+                    sheet.appendChild(createCableFlag(data[idx], slots[i], idx));
+                }
+                host.appendChild(sheet);
+            }
+
+            host.querySelectorAll('.cable-face-text').forEach(function(face) {
+                fitTextToBox(face, face.firstChild, 7, 4.5);
+            });
+
+            cableDenseTags = [];
+            data.forEach(function(item, index) {
+                var svg = renderCode128(document.getElementById('cable-bc-' + index),
+                                        item.barcodeValue, 'cable-bc');
+                if (!svg) { return; }
+                var units = parseFloat((svg.getAttribute('viewBox') || '').split(' ')[2]);
+                /* The flag is rotated, so getBoundingClientRect would report the
+                   barcode's height as its width. Computed style is the layout
+                   width, which is what the bars actually span. */
+                var widthIn = parseFloat(getComputedStyle(svg).width) / 96;
+                if (units && widthIn && (widthIn / units) * 1000 < MIN_NARROW_BAR_MIL) {
+                    cableDenseTags.push(item.barcodeValue);
+                }
+            });
+
+            return sheets;
         }
 
         function generateSplitC128Labels(data) {
@@ -1638,6 +1939,28 @@
                 return;
             }
             
+            if (currentFormat === 'cable61540') {
+                var cableData = parseCableData(input);
+                if (cableData.length === 0) {
+                    alert('No valid data found. For cable flags, paste at least 2 tab-separated columns: Text | Barcode Value.');
+                    return;
+                }
+                var sheetCount = generateCableLabels(cableData);
+                document.getElementById('stats').innerHTML = '✅ Generated ' + cableData.length +
+                    ' cable flag(s) across ' + sheetCount + ' sheet(s) of Avery 61540';
+                document.getElementById('printBtn').style.display = 'inline-block';
+                document.getElementById('multiPageWarning').style.display = 'none';
+
+                var cableWarn = document.getElementById('denseBarcodeWarning');
+                if (cableDenseTags.length > 0) {
+                    document.getElementById('denseBarcodeList').textContent = cableDenseTags.join(', ');
+                    cableWarn.style.display = 'block';
+                } else {
+                    cableWarn.style.display = 'none';
+                }
+                return;
+            }
+
             var data = parseExcelData(input);
             if (data.length === 0) {
                 alert('No valid data found. Please ensure your data has 3 columns separated by tabs.');
@@ -1685,6 +2008,28 @@
         }
         
         function printBarcodes() {
+            if (currentFormat === 'cable61540') {
+                var flags = document.querySelectorAll('.cable-flag').length;
+                var sheets = document.querySelectorAll('.cable-sheet').length;
+                alert('Barcode Generator Gen 3 - Print Settings\n\n' +
+                      'AVERY 61540 CABLE FLAGS: ' + flags + ' flag(s) on ' + sheets + ' sheet(s)\n\n' +
+                      'CRITICAL - these settings are not optional:\n' +
+                      '1. Use Chrome or Edge\n' +
+                      '2. Set Margins to "None" (positions are absolute on the\n' +
+                      '   sheet -- any page margin shifts every flag)\n' +
+                      '3. Set Scale to "100%" - NOT "Fit to page"\n' +
+                      '4. Disable "Headers and Footers"\n\n' +
+                      'TEST FIRST: print one sheet on plain paper and hold it\n' +
+                      'against a label sheet against the light to check\n' +
+                      'alignment before using the 61540 stock.\n\n' +
+                      'Fold each flag along its centre line, text on one face\n' +
+                      'and barcode on the other, then wrap the tail around\n' +
+                      'the cable.\n\n' +
+                      'Click OK to open print dialog...');
+                window.print();
+                return;
+            }
+
             var isStrip = isStripLayout(currentFormat);
             var itemSelector = isStrip ? '.strip-label-pair' : '.barcode-item';
             var count = document.querySelectorAll(itemSelector).length;
@@ -1710,9 +2055,12 @@
         function clearAll() {
             document.getElementById('dataInput').value = '';
             document.getElementById('barcodeGrid').innerHTML = '';
-            document.getElementById('barcodeGrid').style.display = isStripLayout(currentFormat) ? 'none' : 'grid';
+            var isCable = currentFormat === 'cable61540';
+            document.getElementById('barcodeGrid').style.display = (isStripLayout(currentFormat) || isCable) ? 'none' : 'grid';
             document.getElementById('stripGrid').innerHTML = '';
             document.getElementById('stripGrid').style.display = isStripLayout(currentFormat) ? 'grid' : 'none';
+            document.getElementById('cableSheets').innerHTML = '';
+            document.getElementById('cableSheets').style.display = isCable ? 'block' : 'none';
             document.getElementById('stats').innerHTML = '';
             document.getElementById('printBtn').style.display = 'none';
             document.getElementById('multiPageWarning').style.display = 'none';
