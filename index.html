@@ -676,11 +676,13 @@
             box-sizing: border-box;
         }
 
+        /* Starts large and is shrunk to fit by fitTextToBox, so this size is
+           the ceiling rather than a fixed value. */
         .cable-face-text {
-            padding: 0.02in 0.06in;
-            font-size: 7px;
+            padding: 0.02in 0.05in;
+            font-size: 12px;
             font-weight: 700;
-            line-height: 1.15;
+            line-height: 1.1;
             text-align: center;
             color: #000;
         }
@@ -1765,8 +1767,11 @@
         function fitTextToBox(face, inner, startSize, minSize) {
             var size = startSize;
             face.style.fontSize = size + 'px';
+            /* 0.5px steps: starting from 12px, 0.25px steps would mean up to 30
+               reflows per label and 900 across a full sheet, and half a pixel
+               is imperceptible at this size. */
             while (size > minSize && inner.scrollHeight > inner.clientHeight) {
-                size -= 0.25;
+                size -= 0.5;
                 face.style.fontSize = size + 'px';
             }
         }
@@ -2065,7 +2070,7 @@
             }
 
             host.querySelectorAll('.cable-face-text').forEach(function(face) {
-                fitTextToBox(face, face.firstChild, 7, 4.5);
+                fitTextToBox(face, face.firstChild, 12, 5);
             });
 
             paintCableOffset();
