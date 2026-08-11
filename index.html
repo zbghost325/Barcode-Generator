@@ -583,12 +583,15 @@
         }
 
         /* flex: 0 1 auto lets the barcode give back height when a long
-           device name wraps to a second line. */
+           device name wraps to a second line. print-color-adjust stops the
+           browser lightening the bars, which reads as haze on paper. */
         .split-bc {
             display: block;
-            width: 80%;
+            width: 90%;
             height: 28px;
             min-height: 19px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
             flex: 0 1 auto;
         }
 
@@ -1508,6 +1511,10 @@
                 svg.removeAttribute('width');
                 svg.removeAttribute('height');
             }
+            /* The viewBox scales by a non-integer factor, so bar edges land
+               mid-pixel and get anti-aliased into grey fringes -- that is what
+               prints as haze. crispEdges snaps every edge to a hard boundary. */
+            svg.setAttribute('shape-rendering', 'crispEdges');
             svg.setAttribute('class', 'split-bc');
         }
 
@@ -1623,6 +1630,10 @@
             
             if (isStrip) {
                 message += 'STRIP MODE: Each label has 2 strips.\nCut along the dashed line after printing.\n\n';
+            }
+
+            if (currentFormat === 'splitc128') {
+                message += 'FOR CRISP BARCODES:\n- Set print quality to "Best" or "High" (600 dpi or more)\n- Turn OFF draft mode, toner save and "economy" mode\n- A laser printer gives sharper bars than inkjet\n\n';
             }
 
             if (count > 30) {
