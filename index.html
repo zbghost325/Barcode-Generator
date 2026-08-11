@@ -944,15 +944,25 @@
                 margin: 0;
             }
 
+            /* Height is trimmed to just past the lowest flag (10.575in) rather
+               than the full 11in. An element exactly as tall as the page box
+               overflows it on any sub-pixel rounding, and because the flags are
+               absolutely positioned they all paint on page one, leaving the
+               container's empty tail to print as a blank second page. */
             .cable-sheet {
                 page: cable-page;
                 margin: 0;
+                height: 10.7in;
+                overflow: hidden;
                 box-shadow: none;
-                page-break-after: always;
             }
 
-            .cable-sheet:last-child {
-                page-break-after: auto;
+            /* break-before on later sheets, never break-after: a break-after on
+               every sheet also fires after the last one, which is a second way
+               to get a trailing blank page. */
+            .cable-sheet + .cable-sheet {
+                break-before: page;
+                page-break-before: always;
             }
 
             /* Guides are for positioning on screen only -- never on the label. */
@@ -1041,7 +1051,7 @@
                 <span id="cableOffsetNote" style="color:#0056b3;"></span>
             </div>
             <div style="margin-top:8px; color:#555;">
-                Negative values shift the other way. If the error grows down the page rather than staying constant, the printer is scaling &mdash; set Scale to <strong>100%</strong> and Margins to <strong>None</strong>, not &ldquo;Fit to page&rdquo;.
+                Negative values shift the other way. <strong>Check the print preview page count first:</strong> if there is an extra blank page at the end, Margins is not set to <strong>None</strong> and the sheet is being pushed off the page &mdash; fix that before nudging, because no offset will correct it. Scale must be <strong>100%</strong>, not &ldquo;Fit to page&rdquo;.
             </div>
         </div>
 
@@ -1762,6 +1772,7 @@
            below the flag, one with the tail above, staggered horizontally by
            0.635in so the tails interleave and 30 fit on a letter sheet. */
         var CABLE = {
+            sheetH: 11,
             flagW: 1.020,
             flagH: 1.460,
             colPitch: 1.520,
@@ -1850,8 +1861,13 @@
         function createCableFlag(item, slot, index) {
             var flag = document.createElement('div');
             flag.className = 'cable-flag tail-' + slot.tail;
+            /* Anchored from the top, not the bottom. Bottom-anchoring ties the
+               flags to the container's far edge, so if the sheet ever overflows
+               the printable page box every position moves; top-anchored offsets
+               stay correct against the top of the paper and only the last rows
+               clip. */
             flag.style.left = slot.left.toFixed(3) + 'in';
-            flag.style.bottom = slot.bottom.toFixed(3) + 'in';
+            flag.style.top = (CABLE.sheetH - slot.bottom - CABLE.flagH).toFixed(3) + 'in';
 
             var rot = document.createElement('div');
             rot.className = 'cable-rot';
@@ -2086,10 +2102,14 @@
                       'AVERY 61540 CABLE FLAGS: ' + flags + ' flag(s) on ' + sheets + ' sheet(s)\n\n' +
                       'CRITICAL - these settings are not optional:\n' +
                       '1. Use Chrome or Edge\n' +
-                      '2. Set Margins to "None" (positions are absolute on the\n' +
-                      '   sheet -- any page margin shifts every flag)\n' +
+                      '2. Set Margins to "None"  <-- most important\n' +
                       '3. Set Scale to "100%" - NOT "Fit to page"\n' +
                       '4. Disable "Headers and Footers"\n\n' +
+                      'HOW TO TELL IF MARGINS ARE WRONG:\n' +
+                      'The preview should show exactly ' + sheets + ' page(s). If you see\n' +
+                      'an extra blank page at the end, Margins is not set to\n' +
+                      '"None" - the sheet is being pushed off the page. Fix that\n' +
+                      'before printing; no amount of nudging will correct it.\n\n' +
                       'TEST FIRST: print one sheet on plain paper and hold it\n' +
                       'against a label sheet against the light to check\n' +
                       'alignment before using the 61540 stock.\n\n' +
