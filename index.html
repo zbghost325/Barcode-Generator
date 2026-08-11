@@ -114,6 +114,7 @@
         /* Format Selector */
         .format-selector {
             display: flex;
+            flex-wrap: wrap;
             gap: 0;
             margin-top: 15px;
             margin-bottom: 15px;
@@ -503,7 +504,89 @@
             color: #000;
             line-height: 1;
         }
-        
+
+        /* ==================== SPLIT C128 STRIP STYLES ==================== */
+        .split-item {
+            display: flex;
+            align-items: stretch;
+            padding: 3px 5px;
+            gap: 4px;
+            height: 48px;
+            box-sizing: border-box;
+        }
+
+        .split-item:first-child {
+            border-bottom: 1px dashed #ccc;
+        }
+
+        /* Left half: SN / AT as readable text, values in an aligned column. */
+        .split-left {
+            flex: 0 0 42%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .split-field {
+            display: flex;
+            align-items: baseline;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .split-field-label {
+            font-size: 9px;
+            font-weight: 800;
+            color: #000;
+            line-height: 1.1;
+            flex: 0 0 auto;
+        }
+
+        .split-field-value {
+            font-size: 9px;
+            font-weight: 700;
+            color: #000;
+            line-height: 1.1;
+            word-break: break-all;
+            min-width: 0;
+        }
+
+        .split-divider {
+            width: 2px;
+            background: #000;
+            flex: 0 0 auto;
+            margin: 3px 0;
+        }
+
+        /* Right half: device name on top, its Code 128 barcode underneath. */
+        .split-right {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            min-width: 0;
+        }
+
+        .split-device-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: #000;
+            text-align: center;
+            line-height: 1.1;
+            letter-spacing: 0.2px;
+            word-break: break-word;
+        }
+
+        .split-bc {
+            display: block;
+            width: 100%;
+            height: 18px;
+        }
+
         .example-table {
             margin-top: 10px;
             border-collapse: collapse;
@@ -706,6 +789,48 @@
                 font-size: 9px;
                 font-weight: 800;
             }
+
+            /* --- Split C128 strip print --- */
+            .split-item {
+                height: 0.5in;
+                padding: 2px 4px;
+                gap: 3px;
+            }
+
+            .split-item:first-child {
+                border-bottom: 1px dashed #aaa;
+            }
+
+            .split-left {
+                flex: 0 0 1.02in;
+                gap: 1px;
+            }
+
+            .split-field-label,
+            .split-field-value {
+                font-size: 7px;
+                line-height: 1.1;
+            }
+
+            .split-divider {
+                width: 2px;
+                margin: 0.05in 0;
+                background: #000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .split-device-name {
+                font-size: 7.5px;
+                font-weight: 700;
+                line-height: 1.05;
+                letter-spacing: 0;
+            }
+
+            .split-bc {
+                width: 100% !important;
+                height: 0.26in !important;
+            }
         }
     </style>
 </head>
@@ -762,6 +887,9 @@
             </button>
             <button class="format-option" onclick="setFormat('stripmix')" id="fmtStripMix">
                 &#x1F4CF; Strip - Mixed
+            </button>
+            <button class="format-option" onclick="setFormat('splitc128')" id="fmtSplitC128">
+                &#x1F4CF; Split - C128
             </button>
         </div>
         <div class="format-preview" id="formatPreview">
@@ -868,6 +996,7 @@
                     <ul>
                         <li><strong>Standard Barcode:</strong> Full-size label with device name, serial number, Code-39 barcode, and asset tag number. One device per label.</li>
                         <li><strong>Strip Labels (2 per label):</strong> Each Avery 5520 label is split into two thin horizontal strips. Each strip has SN and AT QR codes plus the device name. Ideal for XR glasses, thin devices, or narrow surfaces.</li>
+                        <li><strong>Split - C128 (2 per label):</strong> Same half-height strip size as the Strip formats, but each strip is split down the middle by a vertical rule: serial number and asset tag as readable <code>SN:</code> / <code>AT:</code> text on the left, and on the right the device name with a Code-128 barcode of the asset tag directly underneath it. Use this when your scanners are 1D laser units that can't read QR codes.</li>
                     </ul>
                     
                     <h4>Generating Labels:</h4>
@@ -1009,6 +1138,13 @@
     <script>
         var currentFormat = 'standard';
 
+        /* Formats that render into #stripGrid (two half-height labels per Avery cell). */
+        var STRIP_LAYOUT_FORMATS = ['strip', 'striptext', 'stripmix', 'splitc128'];
+
+        function isStripLayout(format) {
+            return STRIP_LAYOUT_FORMATS.indexOf(format) !== -1;
+        }
+
         function setFormat(format) {
             currentFormat = format;
             document.getElementById('fmtStandard').classList.toggle('active', format === 'standard');
@@ -1016,6 +1152,7 @@
             document.getElementById('fmtStrip').classList.toggle('active', format === 'strip');
             document.getElementById('fmtStripText').classList.toggle('active', format === 'striptext');
             document.getElementById('fmtStripMix').classList.toggle('active', format === 'stripmix');
+            document.getElementById('fmtSplitC128').classList.toggle('active', format === 'splitc128');
 
             var preview = document.getElementById('formatPreview');
             if (format === 'standard') {
@@ -1026,8 +1163,10 @@
                 preview.innerHTML = '<strong>Strip - QR:</strong> Two thin strips per label with SN and AT as QR codes plus device name. Cut along the dashed line. Best when you have a QR scanner.';
             } else if (format === 'striptext') {
                 preview.innerHTML = '<strong>Strip - Text:</strong> Two thin strips per label with SN and AT as plain text plus device name. Cut along the dashed line. Best when QR codes print blurry or no scanner available.';
-            } else {
+            } else if (format === 'stripmix') {
                 preview.innerHTML = '<strong>Strip - Mixed:</strong> Two thin strips per label with SN as text, AT as QR code, plus device name. Cut along the dashed line. Best of both — scannable asset tag with readable serial number.';
+            } else {
+                preview.innerHTML = '<strong>Split - C128:</strong> Two half labels per Avery label, each split down the middle: SN and AT as readable text on the left, device name on the right with its Code-128 asset tag barcode underneath. Cut along the dashed line. Best for 1D laser scanners.';
             }
 
             clearAll();
@@ -1296,6 +1435,118 @@
             return strip;
         }
 
+        function createSplitField(label, value) {
+            var field = document.createElement('div');
+            field.className = 'split-field';
+
+            var labelEl = document.createElement('span');
+            labelEl.className = 'split-field-label';
+            labelEl.textContent = label;
+
+            var valueEl = document.createElement('span');
+            valueEl.className = 'split-field-value';
+            valueEl.textContent = value;
+
+            field.appendChild(labelEl);
+            field.appendChild(valueEl);
+            return field;
+        }
+
+        function createSplitC128Item(item, index) {
+            var strip = document.createElement('div');
+            strip.className = 'split-item';
+
+            var left = document.createElement('div');
+            left.className = 'split-left';
+            left.appendChild(createSplitField('SN:', item.serialNumber));
+            left.appendChild(createSplitField('AT:', item.assetTag));
+
+            var divider = document.createElement('div');
+            divider.className = 'split-divider';
+
+            var right = document.createElement('div');
+            right.className = 'split-right';
+            var name = document.createElement('div');
+            name.className = 'split-device-name';
+            name.textContent = item.deviceName;
+            var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.id = 'split-bc-' + index;
+            svg.setAttribute('class', 'split-bc');
+            right.appendChild(name);
+            right.appendChild(svg);
+
+            strip.appendChild(left);
+            strip.appendChild(divider);
+            strip.appendChild(right);
+
+            return strip;
+        }
+
+        /* Rendered after the SVG is in the DOM, then given a viewBox so CSS can
+           stretch it to the full width of the right half without cropping bars.
+           marginLeft/Right of 10 at width:1 gives Code 128 its required
+           10-module quiet zone, which scales with the barcode. */
+        function renderSplitBarcode(svgId, value) {
+            var svg = document.getElementById(svgId);
+            if (!svg) { return; }
+            try {
+                JsBarcode(svg, value, {
+                    format: 'CODE128',
+                    width: 1,
+                    height: 40,
+                    displayValue: false,
+                    margin: 0,
+                    marginLeft: 10,
+                    marginRight: 10,
+                    background: "#ffffff",
+                    lineColor: "#000000"
+                });
+            } catch (e) {
+                return;
+            }
+            /* JsBarcode writes these with a "px" suffix, which is illegal in a viewBox. */
+            var w = parseFloat(svg.getAttribute('width'));
+            var h = parseFloat(svg.getAttribute('height'));
+            if (w && h) {
+                svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+                svg.setAttribute('preserveAspectRatio', 'none');
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+            }
+            svg.setAttribute('class', 'split-bc');
+        }
+
+        function generateSplitC128Labels(data) {
+            var grid = document.getElementById('stripGrid');
+            grid.innerHTML = '';
+            grid.style.display = 'grid';
+            document.getElementById('barcodeGrid').style.display = 'none';
+
+            for (var i = 0; i < data.length; i += 2) {
+                var pair = document.createElement('div');
+                pair.className = 'strip-label-pair';
+
+                pair.appendChild(createSplitC128Item(data[i], i));
+
+                if (i + 1 < data.length) {
+                    pair.appendChild(createSplitC128Item(data[i + 1], i + 1));
+                } else {
+                    var empty = document.createElement('div');
+                    empty.className = 'split-item';
+                    empty.style.opacity = '0';
+                    pair.appendChild(empty);
+                }
+
+                grid.appendChild(pair);
+            }
+
+            data.forEach(function(item, index) {
+                renderSplitBarcode('split-bc-' + index, item.assetTag);
+            });
+
+            return Math.ceil(data.length / 2);
+        }
+
         function generateStripLabels(data, itemCreator) {
             var creator = itemCreator || createStripItem;
             var grid = document.getElementById('stripGrid');
@@ -1346,12 +1597,14 @@
                 labelCount = generateStripLabels(data, createStripItem);
             } else if (currentFormat === 'striptext') {
                 labelCount = generateStripLabels(data, createTextStripItem);
-            } else {
+            } else if (currentFormat === 'stripmix') {
                 labelCount = generateStripLabels(data, createMixedStripItem);
+            } else {
+                labelCount = generateSplitC128Labels(data);
             }
 
             var statsEl = document.getElementById('stats');
-            if (currentFormat !== 'standard' && currentFormat !== 'c128') {
+            if (isStripLayout(currentFormat)) {
                 statsEl.innerHTML = '✅ Generated ' + data.length + ' strip(s) across ' + labelCount + ' label(s) — cut along dashed lines';
             } else {
                 statsEl.innerHTML = '✅ Generated ' + data.length + ' barcode(s)';
@@ -1366,7 +1619,7 @@
         }
         
         function printBarcodes() {
-            var isStrip = currentFormat !== 'standard' && currentFormat !== 'c128';
+            var isStrip = isStripLayout(currentFormat);
             var itemSelector = isStrip ? '.strip-label-pair' : '.barcode-item';
             var count = document.querySelectorAll(itemSelector).length;
             var message = 'Barcode Generator Gen 3 - Print Settings\n\nPrinting Tips for Avery 5520 Labels:\n\n1. Use Chrome or Edge for best results\n2. Set margins to "Default" or "None"\n3. Disable "Headers and Footers"\n4. Set Scale to "100%" (no scaling)\n5. Feed labels correctly into printer\n\n';
@@ -1387,9 +1640,9 @@
         function clearAll() {
             document.getElementById('dataInput').value = '';
             document.getElementById('barcodeGrid').innerHTML = '';
-            document.getElementById('barcodeGrid').style.display = (currentFormat === 'standard' || currentFormat === 'c128') ? 'grid' : 'none';
+            document.getElementById('barcodeGrid').style.display = isStripLayout(currentFormat) ? 'none' : 'grid';
             document.getElementById('stripGrid').innerHTML = '';
-            document.getElementById('stripGrid').style.display = (currentFormat !== 'standard' && currentFormat !== 'c128') ? 'grid' : 'none';
+            document.getElementById('stripGrid').style.display = isStripLayout(currentFormat) ? 'grid' : 'none';
             document.getElementById('stats').innerHTML = '';
             document.getElementById('printBtn').style.display = 'none';
             document.getElementById('multiPageWarning').style.display = 'none';
