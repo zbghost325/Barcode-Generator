@@ -512,6 +512,7 @@
            rest of the label left blank. Sizes are in inches so the screen
            preview and the print are literally the same dimensions. */
         .split-item {
+            position: relative;
             display: flex;
             align-items: stretch;
             width: 1.6in;
@@ -524,6 +525,19 @@
 
         .split-item:first-child {
             margin-top: 0.04in;
+        }
+
+        /* The cut guide is an overlay, not a border. As a border it consumed
+           1px of the first strip's content box under box-sizing: border-box,
+           making it shorter than the second strip -- enough to push a wrapped
+           serial past the edge, where the pair's overflow:hidden clipped the
+           SN row away entirely. */
+        .split-item:first-child::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
             border-bottom: 1px dashed #ccc;
         }
 
@@ -966,8 +980,8 @@
                Every size is already specified in inches in the screen rules
                above, so the print output is identical. Only genuinely
                print-specific things are overridden here. */
-            .split-item:first-child {
-                border-bottom: 1px dashed #aaa;
+            .split-item:first-child::after {
+                border-bottom-color: #aaa;
             }
 
             .split-divider {
@@ -2117,11 +2131,14 @@
                 grid.appendChild(pair);
             }
 
-            /* 36px is the strip height less its vertical padding; 20px is two
-               lines of the device name, leaving room for the barcode. */
+            /* Measured against the box's own height rather than a hardcoded
+               one: the two strips in a pair are not always the same height,
+               and a stale constant silently clipped the SN row. */
             grid.querySelectorAll('.split-left').forEach(function(el) {
-                fitFontToHeight(el, 9, 6, 36);
+                fitTextToBox(el, el, 9, 6);
             });
+            /* 20px is two lines of the device name, leaving room for the
+               barcode -- a line cap, not an overflow test, so it stays fixed. */
             grid.querySelectorAll('.split-device-name').forEach(function(el) {
                 fitFontToHeight(el, 9, 6, 20);
             });
