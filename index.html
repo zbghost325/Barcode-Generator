@@ -1123,13 +1123,14 @@
         </div>
 
         <div id="cableCalibration" style="display:none; background:#e7f1ff; border:1px solid #007bff; padding:12px; margin-top:10px; border-radius:4px; font-size:13px;">
-            <strong>&#x1F4D0; Print alignment</strong> &mdash; nudge the whole sheet so the flags land on the labels. Saved for next time.
+            <strong>&#x1F4D0; Print alignment</strong> &mdash; nudge the whole sheet so the flags land on the labels.
+            Saved per stock, so <span id="cableCalibStock">this stock</span> keeps its own numbers and adjusting it leaves the other one alone.
             <div style="margin-top:8px; display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
                 <label>Shift right
                     <input type="number" id="cableOffsetX" step="0.01" value="0" style="width:80px; padding:4px; font-size:13px;"> in
                 </label>
-                <label>Shift up
-                    <input type="number" id="cableOffsetY" step="0.01" value="0" style="width:80px; padding:4px; font-size:13px;"> in
+                <label>Shift down
+                    <input type="number" id="cableOffsetDown" step="0.01" value="0" style="width:80px; padding:4px; font-size:13px;"> in
                 </label>
                 <label>Scale
                     <input type="number" id="cableScale" step="0.1" value="100" style="width:80px; padding:4px; font-size:13px;"> %
@@ -1143,7 +1144,7 @@
                 <span style="color:#555; margin-left:8px;">Outlines and two rulers, no data needed. Print on plain paper, measure the rulers, then lay it over a label sheet.</span>
             </div>
             <div style="margin-top:8px; color:#555;">
-                Negative values shift the other way. <strong>Check the print preview page count first:</strong> if there is an extra blank page at the end, Margins is not set to <strong>None</strong> and the sheet is being pushed off the page &mdash; fix that before nudging, because no offset will correct it. Scale must be <strong>100%</strong>, not &ldquo;Fit to page&rdquo;.
+                Negative values shift the other way (up, or left). <strong>Check the print preview page count first:</strong> if there is an extra blank page at the end, Margins is not set to <strong>None</strong> and the sheet is being pushed off the page &mdash; fix that before nudging, because no offset will correct it. Scale must be <strong>100%</strong>, not &ldquo;Fit to page&rdquo;.
             </div>
         </div>
 
@@ -1429,10 +1430,11 @@
             document.getElementById('cableBrowserWarning').style.display =
                 (isCableFormat(format) && !isChromiumBrowser()) ? 'block' : 'none';
             if (isCableFormat(format)) {
-                var o = readCableOffset();
+                var o = readCableOffset(format);
                 document.getElementById('cableOffsetX').value = o.x;
-                document.getElementById('cableOffsetY').value = o.y;
+                document.getElementById('cableOffsetDown').value = o.down;
                 document.getElementById('cableScale').value = o.s;
+                document.getElementById('cableCalibStock').textContent = cableSpec(format).name;
                 paintCableOffset();
             }
 
@@ -1947,13 +1949,37 @@
             return null;
         }
 
-        function readCableOffset() {
-            var x = parseFloat(cableStore('cableOffsetX'));
-            var y = parseFloat(cableStore('cableOffsetY'));
-            var s = parseFloat(cableStore('cableScale'));
+        /* Offsets are kept per stock: the two cable formats are different
+           label sheets, so a nudge that fixes one should not move the other. */
+        function cableOffsetKeys(format) {
+            return {
+                x: 'cableOffsetX:' + format,
+                down: 'cableOffsetDown:' + format,
+                s: 'cableScale:' + format
+            };
+        }
+
+        function readCableOffset(format) {
+            format = format || currentFormat;
+            var k = cableOffsetKeys(format);
+            var x = parseFloat(cableStore(k.x));
+            var down = parseFloat(cableStore(k.down));
+            var s = parseFloat(cableStore(k.s));
+
+            /* Fall back per field to the older shared keys, which were one
+               value for both stocks and measured upwards rather than down.
+               Per field rather than all-or-nothing, so setting just one of the
+               three for a stock does not discard the other two. */
+            if (isNaN(x)) { x = parseFloat(cableStore('cableOffsetX')); }
+            if (isNaN(down)) {
+                var legacyUp = parseFloat(cableStore('cableOffsetY'));
+                if (!isNaN(legacyUp)) { down = -legacyUp; }
+            }
+            if (isNaN(s)) { s = parseFloat(cableStore('cableScale')); }
+
             return {
                 x: isNaN(x) ? 0 : x,
-                y: isNaN(y) ? 0 : y,
+                down: isNaN(down) ? 0 : down,
                 s: (isNaN(s) || s <= 0) ? 100 : s
             };
         }
@@ -1962,38 +1988,45 @@
            independent -- scaling about the centre would move everything as
            well, making the two controls fight each other. */
         function paintCableOffset() {
-            var o = readCableOffset();
+            var o = readCableOffset(currentFormat);
             document.querySelectorAll('.cable-sheet').forEach(function(sheet) {
                 sheet.style.transformOrigin = '0 0';
-                sheet.style.transform = 'translate(' + o.x + 'in, ' + (-o.y) + 'in) scale(' + (o.s / 100) + ')';
+                sheet.style.transform = 'translate(' + o.x + 'in, ' + o.down + 'in) scale(' + (o.s / 100) + ')';
             });
             var note = document.getElementById('cableOffsetNote');
             if (note) {
                 var bits = [];
                 if (o.x) { bits.push(o.x + 'in right'); }
-                if (o.y) { bits.push(o.y + 'in up'); }
+                if (o.down) { bits.push(Math.abs(o.down) + 'in ' + (o.down > 0 ? 'down' : 'up')); }
                 if (o.s !== 100) { bits.push(o.s + '% scale'); }
                 note.textContent = bits.length ? 'Applied: ' + bits.join(', ') : '';
             }
         }
 
         function applyCableOffset() {
+            var k = cableOffsetKeys(currentFormat);
             var x = parseFloat(document.getElementById('cableOffsetX').value) || 0;
-            var y = parseFloat(document.getElementById('cableOffsetY').value) || 0;
+            var down = parseFloat(document.getElementById('cableOffsetDown').value) || 0;
             var s = parseFloat(document.getElementById('cableScale').value);
             if (isNaN(s) || s <= 0) { s = 100; }
-            cableStore('cableOffsetX', x);
-            cableStore('cableOffsetY', y);
-            cableStore('cableScale', s);
+            cableStore(k.x, x);
+            cableStore(k.down, down);
+            cableStore(k.s, s);
             paintCableOffset();
         }
 
         function resetCableOffset() {
+            var k = cableOffsetKeys(currentFormat);
+            cableStore(k.x, null);
+            cableStore(k.down, null);
+            cableStore(k.s, null);
+            /* Clear the shared legacy keys too, or they would be migrated
+               straight back in on the next read. */
             cableStore('cableOffsetX', null);
             cableStore('cableOffsetY', null);
             cableStore('cableScale', null);
             document.getElementById('cableOffsetX').value = 0;
-            document.getElementById('cableOffsetY').value = 0;
+            document.getElementById('cableOffsetDown').value = 0;
             document.getElementById('cableScale').value = 100;
             paintCableOffset();
         }
